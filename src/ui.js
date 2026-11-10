@@ -493,7 +493,8 @@
     var u = (S.user || '').trim(), msg = document.getElementById('auto-msg');
     function say(t, err) { if (msg) { msg.textContent = t; msg.className = err ? 'err' : 'fine'; } }
     if (!u) { say('اول نام کاربری‌ات را بنویس.', true); return; }
-    say('در حال دریافت بازی‌ها…');
+    S.src = src;
+    say('در حال دریافت بازی‌های ' + u + '…');
     var job;
     if (src === 'cc') {
       var base = 'https://api.chess.com/pub/player/' + encodeURIComponent(u.toLowerCase());
@@ -548,6 +549,8 @@
       var r = load(txt, u);
       if (r.error) { S.importMsg = { err: true, text: r.error }; render(); return; }
       store('shatranj.pgn', txt); store('shatranj.user', u); S.page = 0; S.gview = false;
+      if (S.src) store('shatranj.src', S.src);
+      if (u && S.src) { try { history.replaceState(null, '', location.pathname + '?u=' + encodeURIComponent(u) + (S.src === 'li' ? '&src=li' : '') + location.hash); } catch (e) { } }
       S.importMsg = null;
       go('report');
     }, 20);
@@ -556,7 +559,13 @@
   // ---------- boot ----------
   var saved = recall('shatranj.pgn');
   S.user = recall('shatranj.user') || '';
+  var q = null, qsrc = recall('shatranj.src') || 'cc';
+  try { var sp = new URLSearchParams(location.search); q = sp.get('u'); if (sp.get('src') === 'li') qsrc = 'li'; } catch (e) { }
+  if (q && q.toLowerCase() !== S.user.toLowerCase()) saved = null;
+  if (q) S.user = q;
   if (saved) load(saved, S.user);
   window.addEventListener('hashchange', route);
   route();
+  // No games in this browser but we know whose games to show: fetch them again.
+  if (!S.rep && S.user && (q || recall('shatranj.src'))) autoFetch(qsrc);
 })();
