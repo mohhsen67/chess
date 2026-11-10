@@ -312,7 +312,7 @@
     h += '<div class="card icard">';
     if (S.imode !== 'file') {
       h += '<p style="color:#C4CCDC">نام کاربری‌ات را بنویس. بازی‌های دو ماه اخیر خوانده می‌شود.</p>' + autoBlock();
-      if (S.rep) h += '<button type="button" class="btn ghost" id="reset" style="margin-top:auto">پاک کردن بازی‌ها از این مرورگر</button>';
+      if (S.rep) h += '<button type="button" class="btn ghost" id="reset" style="margin-top:auto">بازیکن دیگر</button>';
     } else {
       h += '<label class="drop" id="drop" for="file">' + ICON.upload + '<span><b style="color:var(--text)">فایل PGN را انتخاب کن</b><br>یا این‌جا رها کن</span><input id="file" type="file" accept=".pgn,.txt,application/x-chess-pgn,text/plain" multiple class="sr"></label>';
       h += '<div class="field"><label for="paste">یا متن PGN را بچسبان</label><textarea id="paste" placeholder="[Event &quot;Live Chess&quot;] ..."></textarea></div>';
@@ -475,7 +475,7 @@
   // ---------- import ----------
   function bindImport() {
     var rs = document.getElementById('reset');
-    if (rs) rs.addEventListener('click', function () { forget('shatranj.pgn'); S.rep = null; S.importMsg = null; go('report'); });
+    if (rs) rs.addEventListener('click', function () { forget('shatranj.user'); forget('shatranj.src'); S.rep = null; S.user = ''; S.importMsg = null; try { history.replaceState(null, '', location.pathname + '#report'); } catch (e) { } go('report'); });
     var drop = document.getElementById('drop'), file = document.getElementById('file');
     if (!drop) return;
     ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
@@ -498,15 +498,23 @@
     var job;
     if (src === 'cc') {
       var base = 'https://api.chess.com/pub/player/' + encodeURIComponent(u.toLowerCase());
-      job = fetch(base + '/games/archives').then(function (r) {
+      var live = fetch(base + '/games/archives').then(function (r) {
         if (r.status === 404) throw new Error('nouser');
         if (!r.ok) throw new Error('http');
         return r.json();
       }).then(function (j) {
         var arcs = (j.archives || []).slice(-2);
-        if (!arcs.length) throw new Error('nogames');
-        return Promise.all(arcs.map(function (a) { return fetch(a + '/pgn').then(function (r) { return r.ok ? r.text() : ''; }); }));
-      }).then(function (parts) { return parts.join('\n\n'); });
+        if (!arcs.length) return '';
+        return Promise.all(arcs.map(function (a) { return fetch(a + '/pgn').then(function (r) { return r.ok ? r.text() : ''; }); })).then(function (p) { return p.join('\n\n'); });
+      });
+      // Games this site keeps in its own data folder, filled by the sync job.
+      var kept = fetch('data/' + encodeURIComponent(u.toLowerCase()) + '.pgn', { cache: 'no-cache' })
+        .then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+      job = Promise.all([kept, live.catch(function (e) { return e; })]).then(function (res) {
+        var k = res[0], l = res[1];
+        if (l instanceof Error) { if (k) return k; throw l; }
+        return mergePGN(k, l);
+      });
     } else {
       job = fetch('https://lichess.org/api/games/user/' + encodeURIComponent(u) + '?max=100&clocks=true&opening=true', { headers: { Accept: 'application/x-chess-pgn' } })
         .then(function (r) { if (r.status === 404) throw new Error('nouser'); if (!r.ok) throw new Error('http'); return r.text(); });
@@ -520,6 +528,15 @@
       else if (e.message === 'nogames') say('برای این کاربر بازی‌ای در دو ماه اخیر پیدا نشد.', true);
       else say('اتصال برقرار نشد. اینترنت را بررسی کن و دوباره امتحان کن، یا فایل PGN را دستی وارد کن.', true);
     });
+  }
+
+  function mergePGN(a, b) {
+    function split(t) { return (t || '').replace(/\r/g, '').split(/\n\s*\n(?=\[Event )/).map(function (s) { return s.trim(); }).filter(Boolean); }
+    function key(g) { var m = g.match(/\[Link "([^"]+)"\]/); return m ? m[1] : g; }
+    var out = split(a), seen = {};
+    out.forEach(function (g) { seen[key(g)] = 1; });
+    split(b).forEach(function (g) { var k = key(g); if (!seen[k]) { seen[k] = 1; out.push(g); } });
+    return out.join('\n\n');
   }
 
   function bindAuto() {
@@ -548,7 +565,7 @@
       var u = (S.user || '').trim();
       var r = load(txt, u);
       if (r.error) { S.importMsg = { err: true, text: r.error }; render(); return; }
-      store('shatranj.pgn', txt); store('shatranj.user', u); S.page = 0; S.gview = false;
+      store('shatranj.user', u); S.page = 0; S.gview = false;
       if (S.src) store('shatranj.src', S.src);
       if (u && S.src) { try { history.replaceState(null, '', location.pathname + '?u=' + encodeURIComponent(u) + (S.src === 'li' ? '&src=li' : '') + location.hash); } catch (e) { } }
       S.importMsg = null;
@@ -557,15 +574,13 @@
   }
 
   // ---------- boot ----------
-  var saved = recall('shatranj.pgn');
+  forget('shatranj.pgn');
   S.user = recall('shatranj.user') || '';
   var q = null, qsrc = recall('shatranj.src') || 'cc';
   try { var sp = new URLSearchParams(location.search); q = sp.get('u'); if (sp.get('src') === 'li') qsrc = 'li'; } catch (e) { }
-  if (q && q.toLowerCase() !== S.user.toLowerCase()) saved = null;
   if (q) S.user = q;
-  if (saved) load(saved, S.user);
   window.addEventListener('hashchange', route);
   route();
   // No games in this browser but we know whose games to show: fetch them again.
-  if (!S.rep && S.user && (q || recall('shatranj.src'))) autoFetch(qsrc);
+  if (S.user) autoFetch(qsrc);
 })();
