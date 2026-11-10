@@ -210,16 +210,18 @@ var Chess = (function () {
     return str;
   }
 
-  function parseSan(s, tok) {
+  function parseSan(s, tok, moves) {
     var clean = tok.replace(/[+#!?]/g, '').replace(/0/g, 'O').replace(/^([a-h][18])([QRBN])$/, '$1=$2');
-    var moves = legal(s);
-    for (var m of moves) {
-      if (san(s, m, moves).replace(/[+#]/g, '') === clean) return m;
+    moves = moves || legal(s);
+    if (clean === 'O-O' || clean === 'O-O-O') {
+      var side = clean === 'O-O' ? 'K' : 'Q';
+      return moves.filter(function (m) { return m.castle === side; })[0] || null;
     }
     var mm = clean.match(/^([NBRQK])?([a-h])?([1-8])?x?([a-h][1-8])(?:=?([NBRQ]))?$/);
     if (!mm) return null;
     var t = mm[1] || 'P', to = sqIdx(mm[4]);
     var cands = moves.filter(function (m) {
+      if (m.castle) return false;
       if (m.p.toUpperCase() !== t || m.to !== to) return false;
       if (mm[2] && FILES[m.from % 8] !== mm[2]) return false;
       if (mm[3] && String(Math.floor(m.from / 8) + 1) !== mm[3]) return false;
@@ -319,9 +321,9 @@ var Chess = (function () {
     var s = h.FEN ? fromFEN(h.FEN) : start();
     var plies = [];
     for (var tk of tokens) {
-      var m = parseSan(s, tk.san);
-      if (!m) break;
       var moves = legal(s);
+      var m = parseSan(s, tk.san, moves);
+      if (!m) break;
       var sanStr = san(s, m, moves);
       var before = s;
       s = make(s, m);

@@ -512,7 +512,7 @@
         .then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
       job = Promise.all([kept, live.catch(function (e) { return e; })]).then(function (res) {
         var k = res[0], l = res[1];
-        if (l instanceof Error) { if (k) return k; throw l; }
+        if (l instanceof Error) { if (k) return mergePGN(k, ''); throw l; }
         return mergePGN(k, l);
       });
     } else {
@@ -530,13 +530,15 @@
     });
   }
 
+  var RECENT = 300;
   function mergePGN(a, b) {
     function split(t) { return (t || '').replace(/\r/g, '').split(/\n\s*\n(?=\[Event )/).map(function (s) { return s.trim(); }).filter(Boolean); }
     function key(g) { var m = g.match(/\[Link "([^"]+)"\]/); return m ? m[1] : g; }
     var out = split(a), seen = {};
     out.forEach(function (g) { seen[key(g)] = 1; });
     split(b).forEach(function (g) { var k = key(g); if (!seen[k]) { seen[k] = 1; out.push(g); } });
-    return out.join('\n\n');
+    // The report reads the most recent games; the full history stays in data/.
+    return out.slice(-RECENT).join('\n\n');
   }
 
   function bindAuto() {
