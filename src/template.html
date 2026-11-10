@@ -57,7 +57,9 @@ p{margin:0}
 .nav a{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:12px;color:var(--muted);text-decoration:none;font-size:15px;font-weight:500}
 .nav a:hover,.nav a[aria-current="page"]{color:var(--text);background:var(--raise)}
 .nav a svg{width:18px;height:18px}
-body.noreport .nav a:not([data-view="import"]){opacity:.45;pointer-events:none}
+body.noreport .nav a:not([data-view="club"]):not([data-view="account"]){opacity:.45;pointer-events:none}
+body.signedout .nav{display:none}
+body.signedout main{padding-bottom:20px}
 main{flex:1;min-height:0;width:100%;max-width:1180px;margin:0 auto;padding:20px;display:flex;flex-direction:column}
 .view{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px}
 .vh{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -234,6 +236,21 @@ button.sq{cursor:pointer}
 .tact{flex:none;display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px}
 .tact .btn{padding:0 8px;font-size:14px}
 
+/* account + club */
+.form{display:flex;flex-direction:column;gap:12px}
+.form h2{font-size:16px;font-weight:600}
+.sep{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
+.codebox{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px 10px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--tint-line)}
+.codebox .mono{font-size:20px;font-weight:600;color:var(--accent);letter-spacing:.02em}
+.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:#C4CCDC}
+.blist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding:6px 18px}
+.brow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.brow:last-child{border-bottom:0}
+.brow.me .who b{color:var(--accent)}
+.rank{font-weight:800;font-size:16px;color:var(--muted);text-align:center}
+.brow .meta b{font-size:16px;color:var(--text)}
+button.uchip{cursor:pointer;font:inherit;font-size:13px}
+
 /* import + welcome */
 .seg{flex:none;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:var(--raise)}
 .seg button{min-height:40px;border:0;border-radius:11px;background:none;color:var(--muted);font-weight:500;cursor:pointer}
@@ -302,7 +319,8 @@ button.sq{cursor:pointer}
       <a href="#report" data-view="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>گزارش</a>
       <a href="#games" data-view="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 12h18M12 3v18"/></svg>بازی‌ها</a>
       <a href="#train" data-view="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>تمرین</a>
-      <a href="#import" data-view="import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>ورود بازی‌ها</a>
+      <a href="#club" data-view="club"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.8 3.1 2.6 3.5 5.2"/></svg>باشگاه</a>
+      <a href="#account" data-view="account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.2-6 8-6s7 2 8 6"/></svg>حساب</a>
     </nav>
     <div class="spacer"></div>
   </div>

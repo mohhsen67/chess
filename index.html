@@ -57,7 +57,9 @@ p{margin:0}
 .nav a{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:12px;color:var(--muted);text-decoration:none;font-size:15px;font-weight:500}
 .nav a:hover,.nav a[aria-current="page"]{color:var(--text);background:var(--raise)}
 .nav a svg{width:18px;height:18px}
-body.noreport .nav a:not([data-view="import"]){opacity:.45;pointer-events:none}
+body.noreport .nav a:not([data-view="club"]):not([data-view="account"]){opacity:.45;pointer-events:none}
+body.signedout .nav{display:none}
+body.signedout main{padding-bottom:20px}
 main{flex:1;min-height:0;width:100%;max-width:1180px;margin:0 auto;padding:20px;display:flex;flex-direction:column}
 .view{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px}
 .vh{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -234,6 +236,21 @@ button.sq{cursor:pointer}
 .tact{flex:none;display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px}
 .tact .btn{padding:0 8px;font-size:14px}
 
+/* account + club */
+.form{display:flex;flex-direction:column;gap:12px}
+.form h2{font-size:16px;font-weight:600}
+.sep{border:0;border-top:1px solid var(--line);margin:4px 0;width:100%}
+.codebox{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 10px 10px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--tint-line)}
+.codebox .mono{font-size:20px;font-weight:600;color:var(--accent);letter-spacing:.02em}
+.steps{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;color:#C4CCDC}
+.blist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding:6px 18px}
+.brow{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.brow:last-child{border-bottom:0}
+.brow.me .who b{color:var(--accent)}
+.rank{font-weight:800;font-size:16px;color:var(--muted);text-align:center}
+.brow .meta b{font-size:16px;color:var(--text)}
+button.uchip{cursor:pointer;font:inherit;font-size:13px}
+
 /* import + welcome */
 .seg{flex:none;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:14px;background:var(--raise)}
 .seg button{min-height:40px;border:0;border-radius:11px;background:none;color:var(--muted);font-weight:500;cursor:pointer}
@@ -302,7 +319,8 @@ button.sq{cursor:pointer}
       <a href="#report" data-view="report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>گزارش</a>
       <a href="#games" data-view="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 12h18M12 3v18"/></svg>بازی‌ها</a>
       <a href="#train" data-view="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>تمرین</a>
-      <a href="#import" data-view="import"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>ورود بازی‌ها</a>
+      <a href="#club" data-view="club"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c1.9.8 3.1 2.6 3.5 5.2"/></svg>باشگاه</a>
+      <a href="#account" data-view="account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.2-6 8-6s7 2 8 6"/></svg>حساب</a>
     </nav>
     <div class="spacer"></div>
   </div>
@@ -856,8 +874,8 @@ var Analyze = (function () {
   var PNAME = { K: 'شاه', Q: 'وزیر', R: 'رخ', B: 'فیل', N: 'اسب', P: 'سرباز' };
   var app = document.getElementById('app');
   var S = {
-    rep: null, view: 'report', filter: 'all', weakFilter: null,
-    gid: null, gview: false, page: 0, imode: 'auto', ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: '', importMsg: null
+    rep: null, profile: null, stage: null, amode: 'in', prog: {}, tatt: 0, club: null, board: null, clubLoaded: false, view: 'report', filter: 'all', weakFilter: null,
+    gid: null, gview: false, page: 0, ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: ''
   };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -955,27 +973,7 @@ var Analyze = (function () {
   function head(title, extra) { return '<div class="vh"><h1>' + title + '</h1>' + (extra || '') + '</div>'; }
   var EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
   function userChip() {
-    return '<a class="uchip" href="#import" aria-label="تغییر بازی‌ها"><span class="mono">' + esc(S.rep.user) + '</span><span>· ' + fa(S.rep.games.length) + ' بازی</span>' + EDIT + '</a>';
-  }
-
-  function autoBlock() {
-    return '<div class="field"><label for="uname">نام کاربری تو در Chess.com یا Lichess</label><input id="uname" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(S.user || '') + '"></div>' +
-      '<div class="actions"><button type="button" class="btn primary" id="auto-cc">دریافت از Chess.com</button><button type="button" class="btn" id="auto-li">دریافت از Lichess</button></div>' +
-      '<p class="fine" id="auto-msg" role="status"></p>';
-  }
-
-  function viewWelcome() {
-    var h = '<section class="welcome"><div class="card wcard"><div class="wm-head"><span class="tile t-purple">' + ROOK + '</span><p class="eyebrow" style="color:var(--accent)">شطرنج</p></div>';
-    h += '<h1>ضعف‌های تکراری بازی‌ات را پیدا کن</h1>';
-    h += '<p class="lead">نام کاربری‌ات را بنویس. شطرنج بازی‌های دو ماه اخیرت را می‌خواند و نشان می‌دهد بیشتر کجا امتیاز از دست می‌دهی.</p>';
-    h += autoBlock();
-    h += '<a class="fine" href="#import">یا فایل PGN را دستی وارد کن</a></div>';
-    h += '<div class="feat">';
-    [['blunder', 'گزارش', 'ضعف اصلی و الگوهای تکراری تو'], ['opening', 'بازی‌ها', 'مرور حرکت به حرکت، با اشتباه‌های مشخص'], ['time', 'تمرین', 'موقعیت‌هایی از بازی‌های خودت']].forEach(function (f) {
-      h += '<div class="frow">' + wtile(f[0], true) + '<div><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>';
-    });
-    h += '</div></section>';
-    return h;
+    return '<a class="uchip" href="#account" aria-label="حساب"><span class="mono">' + esc(S.rep.user) + '</span><span>· ' + fa(S.rep.games.length) + ' بازی</span>' + EDIT + '</a>';
   }
 
   function reportCards() {
@@ -1144,44 +1142,18 @@ var Analyze = (function () {
     var tg = [];
     if (S.tsel != null && !S.tdone) tg = Chess.legal(it.pos).filter(function (m) { return m.from === S.tsel; }).map(function (m) { return m.to; });
     var hl = S.tdone && S.tdone.m ? [S.tdone.m.from, S.tdone.m.to] : (S.tfb && S.tfb.m ? [S.tfb.m.from, S.tfb.m.to] : []);
-    var h = '<div class="view tview">' + head('تمرین', '<span class="fine">' + fa(S.ti + 1) + ' از ' + fa(items.length) + '</span>');
-    h += '<div class="tprog"><div class="track"><div class="fill" style="width:' + ((S.ti + 1) / items.length * 100) + '%"></div></div></div>';
+    var solvedN = items.filter(function (x) { var p = S.prog[trainKey(x)]; return p && p.solved; }).length;
+    var mine = S.prog[trainKey(it)];
+    var h = '<div class="view tview">' + head('تمرین', '<span class="fine">' + fa(S.ti + 1) + ' از ' + fa(items.length) + ' · ' + fa(solvedN) + ' حل‌شده</span>');
+    h += '<div class="tprog"><div class="track"><div class="fill" style="width:' + (solvedN / items.length * 100) + '%"></div></div></div>';
     h += '<p class="tq">نوبت ' + (me === 'w' ? 'سفید' : 'سیاه') + '. در بازی با <bdi>' + esc(it.game.opp) + '</bdi> این‌جا <span class="mono">' + esc(it.played.san) + '</span> زدی و ' + fa(it.b.loss) + ' امتیاز مهره از دست رفت. حرکت امن‌تری پیدا کن.</p>';
     h += '<div class="bwrap">' + boardHTML(pos, { flip: me === 'b', click: !S.tdone, sel: S.tsel, tgts: tg, hl: hl, bad: S.tfb && S.tfb.kind === 'no' }) + '</div>';
     var fb = S.tfb;
     if (fb) h += '<div class="fb ' + (fb.kind === 'ok' ? 'ok' : fb.kind === 'no' ? 'no' : '') + '" role="status">' + (fb.kind === 'ok' ? ICON.ok : fb.kind === 'no' ? ICON.no : ICON.think) + '<span>' + fb.text + '</span></div>';
+    else if (mine && mine.solved) h += '<div class="fb ok" role="status">' + ICON.ok + '<span>این موقعیت را قبلاً حل کرده‌ای. اگر خواستی دوباره امتحانش کن.</span></div>';
     else h += '<div class="fb" role="status"><span style="color:var(--muted)">روی یک مهره‌ی ' + (me === 'w' ? 'سفید' : 'سیاه') + ' بزن، بعد روی خانه‌ی مقصد.</span></div>';
     h += '<div class="tact"><button type="button" class="btn" data-t="prev"' + (S.ti === 0 ? ' disabled' : '') + '>قبلی</button><button type="button" class="btn" data-t="reveal">جواب</button><button type="button" class="btn primary" data-t="next">بعدی</button></div></div>';
     return h;
-  }
-
-  function viewImport() {
-    var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1;
-    var pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
-    function two(n) { return n < 10 ? '0' + n : '' + n; }
-    var h = '<div class="view iwrap">' + head('ورود بازی‌ها', S.rep ? userChip() : '');
-    h += '<div class="seg" role="group" aria-label="روش ورود"><button type="button" data-imode="auto" aria-pressed="' + (S.imode !== 'file') + '">خودکار</button><button type="button" data-imode="file" aria-pressed="' + (S.imode === 'file') + '">فایل PGN</button></div>';
-    h += '<div class="card icard">';
-    if (S.imode !== 'file') {
-      h += '<p style="color:#C4CCDC">نام کاربری‌ات را بنویس. بازی‌های دو ماه اخیر خوانده می‌شود.</p>' + autoBlock();
-      if (S.rep) h += '<button type="button" class="btn ghost" id="reset" style="margin-top:auto">بازیکن دیگر</button>';
-    } else {
-      h += '<label class="drop" id="drop" for="file">' + ICON.upload + '<span><b style="color:var(--text)">فایل PGN را انتخاب کن</b><br>یا این‌جا رها کن</span><input id="file" type="file" accept=".pgn,.txt,application/x-chess-pgn,text/plain" multiple class="sr"></label>';
-      h += '<div class="field"><label for="paste">یا متن PGN را بچسبان</label><textarea id="paste" placeholder="[Event &quot;Live Chess&quot;] ..."></textarea></div>';
-      h += '<button type="button" class="btn primary" id="go">تحلیل کن</button>';
-      h += '<div class="dl" id="dl">' + dlLinks(S.user || '', y, m, py, pm, two) + '</div>';
-      if (S.importMsg) h += '<p class="' + (S.importMsg.err ? 'err' : 'fine') + '" role="status">' + esc(S.importMsg.text) + '</p>';
-    }
-    return h + '</div></div>';
-  }
-
-  function dlLinks(u, y, m, py, pm, two) {
-    if (!u) return '<p class="fine">فایل PGN را از بخش آرشیو Chess.com یا Lichess دانلود کن.</p>';
-    var e = encodeURIComponent(u.trim());
-    return '<p class="fine">دانلود فایل برای <span class="mono">' + esc(u) + '</span>:</p>' +
-      '<a href="https://api.chess.com/pub/player/' + e.toLowerCase() + '/games/' + y + '/' + two(m) + '/pgn" target="_blank" rel="noopener">Chess.com: این ماه</a>' +
-      '<a href="https://api.chess.com/pub/player/' + e.toLowerCase() + '/games/' + py + '/' + two(pm) + '/pgn" target="_blank" rel="noopener">Chess.com: ماه قبل</a>' +
-      '<a href="https://lichess.org/api/games/user/' + e + '?max=100&amp;clocks=true&amp;opening=true" target="_blank" rel="noopener">Lichess: ۱۰۰ بازی آخر</a>';
   }
 
   // ---------- render ----------
@@ -1190,10 +1162,16 @@ var Analyze = (function () {
     document.querySelectorAll('.nav a').forEach(function (a) { if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     document.body.classList.toggle('noreport', !S.rep);
     var gl = document.getElementById('glist'), keep = gl ? gl.scrollTop : null;
-    var html = v === 'import' ? viewImport() : !S.rep ? viewWelcome() : v === 'games' ? viewGames() : v === 'train' ? viewTrain() : viewReport();
+    document.body.classList.toggle('signedout', !session);
+    var html;
+    if (!session) html = viewAuth();
+    else if (S.stage === 'loading' || !S.stage || S.fatal) html = viewLoading();
+    else if (v === 'account') html = viewAccount();
+    else if (v === 'club') html = viewClub();
+    else if (S.stage === 'link') html = viewLink();
+    else if (!S.rep) html = viewSync();
+    else html = v === 'games' ? viewGames() : v === 'train' ? viewTrain() : viewReport();
     app.innerHTML = html;
-    bindAuto();
-    if (v === 'import') bindImport();
     var gl2 = document.getElementById('glist');
     if (gl2 && keep != null) gl2.scrollTop = keep;
     var ms = document.getElementById('mstrip'), c = ms && ms.querySelector('.cur');
@@ -1214,7 +1192,7 @@ var Analyze = (function () {
 
   function route() {
     var hsh = (location.hash || '').replace('#', '');
-    S.view = ['report', 'games', 'train', 'import'].indexOf(hsh) >= 0 ? hsh : 'report';
+    S.view = ['report', 'games', 'train', 'club', 'account'].indexOf(hsh) >= 0 ? hsh : 'report';
     render();
   }
 
@@ -1228,7 +1206,6 @@ var Analyze = (function () {
     if (t.dataset.gid) { S.gid = +t.dataset.gid; S.ply = -2; S.gview = true; render(); return; }
     if (t.dataset.back) { S.gview = false; render(); return; }
     if (t.dataset.page) { var pg = document.getElementById('pager'), w = pg.firstElementChild.getBoundingClientRect().width + 14; pg.scrollTo({ left: (getComputedStyle(pg).direction === 'rtl' ? -1 : 1) * (+t.dataset.page) * w, behavior: 'smooth' }); return; }
-    if (t.dataset.imode) { S.imode = t.dataset.imode; S.importMsg = null; render(); return; }
     if (t.dataset.ply) { S.ply = +t.dataset.ply; render(); focusBoard(); return; }
     if (t.dataset.nav) { navPly(t.dataset.nav); return; }
     if (t.dataset.trainfrom) {
@@ -1238,6 +1215,8 @@ var Analyze = (function () {
       go('train'); return;
     }
     if (t.dataset.t) { trainAction(t.dataset.t); return; }
+    if (t.dataset.act) { act(t.dataset.act, t); return; }
+    if (t.dataset.copy) { copyText(t.dataset.copy, t); return; }
     if (t.dataset.sq) { trainClick(+t.dataset.sq); return; }
   });
 
@@ -1263,7 +1242,12 @@ var Analyze = (function () {
     else if (e.key === 'End') { e.preventDefault(); navPly('last'); }
   });
 
-  function resetTrain() { S.tsel = null; S.tfb = null; S.tdone = false; }
+  function resetTrain() { S.tsel = null; S.tfb = null; S.tdone = false; S.tatt = 0; }
+  function nextUnsolved(from) {
+    var items = S.rep.train, n = items.length;
+    for (var k = 1; k <= n; k++) { var i = (from + k) % n, p = S.prog[trainKey(items[i])]; if (!p || !p.solved) return i; }
+    return (from + 1) % n;
+  }
 
   function bestFor(i) {
     if (!S.tcache[i]) S.tcache[i] = Chess.bestMoves(S.rep.train[i].pos, 3);
@@ -1272,7 +1256,7 @@ var Analyze = (function () {
 
   function trainAction(a) {
     var n = S.rep.train.length;
-    if (a === 'next') { S.ti = (S.ti + 1) % n; resetTrain(); render(); return; }
+    if (a === 'next') { S.ti = nextUnsolved(S.ti); resetTrain(); render(); return; }
     if (a === 'prev') { S.ti = Math.max(0, S.ti - 1); resetTrain(); render(); return; }
     if (a === 'reveal') {
       S.tfb = { kind: 'think', text: 'در حال محاسبه…' }; render();
@@ -1280,6 +1264,7 @@ var Analyze = (function () {
         var it = S.rep.train[S.ti], sc = bestFor(S.ti), b = sc[0];
         var sanStr = Chess.san(it.pos, b.m);
         S.tdone = { m: b.m, after: Chess.make(it.pos, b.m) };
+        saveProgress(it, false);
         S.tfb = { kind: 'ok', text: 'یک حرکت امن این‌جا <span class="mono">' + esc(sanStr) + '</span> بود. ' + gainText(sc, it) };
         render();
       }, 30);
@@ -1314,8 +1299,9 @@ var Analyze = (function () {
       var sanStr = Chess.san(pos, mv);
       if (mine >= best) {
         S.tdone = { m: mv, after: Chess.make(pos, mv) };
+        saveProgress(it, true);
         S.tfb = { kind: 'ok', text: '<b>درست.</b> با <span class="mono">' + esc(sanStr) + '</span> مهره‌ای از دست نمی‌رود.' };
-      } else if (playedV != null && mine > playedV) {
+      } else if ((S.tatt = (S.tatt || 0) + 1) && playedV != null && mine > playedV) {
         S.tfb = { kind: 'no', m: mv, text: '<span class="mono">' + esc(sanStr) + '</span> بهتر از حرکت بازی است، ولی هنوز ' + fa(best - mine) + ' امتیاز مهره از دست می‌رود. دوباره امتحان کن.' };
       } else {
         S.tfb = { kind: 'no', m: mv, text: 'با <span class="mono">' + esc(sanStr) + '</span> هم ' + fa(Math.max(1, best - mine)) + ' امتیاز مهره از دست می‌رود. دوباره امتحان کن.' };
@@ -1324,119 +1310,318 @@ var Analyze = (function () {
     }, 30);
   }
 
-  // ---------- import ----------
-  function bindImport() {
-    var rs = document.getElementById('reset');
-    if (rs) rs.addEventListener('click', function () { forget('shatranj.user'); forget('shatranj.src'); S.rep = null; S.user = ''; S.importMsg = null; try { history.replaceState(null, '', location.pathname + '#report'); } catch (e) { } go('report'); });
-    var drop = document.getElementById('drop'), file = document.getElementById('file');
-    if (!drop) return;
-    ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
-    ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
-    drop.addEventListener('drop', function (e) { readFiles(e.dataTransfer.files); });
-    file.addEventListener('change', function () { readFiles(file.files); });
-    document.getElementById('go').addEventListener('click', function () {
-      var txt = document.getElementById('paste').value;
-      if (!txt.trim()) { S.importMsg = { err: true, text: 'اول یک فایل انتخاب کن یا متن PGN را بچسبان.' }; render(); return; }
-      finish(txt);
-    });
-  }
-
-  function autoFetch(src) {
-    var u = (S.user || '').trim(), msg = document.getElementById('auto-msg');
-    function say(t, err) { if (msg) { msg.textContent = t; msg.className = err ? 'err' : 'fine'; } }
-    if (!u) { say('اول نام کاربری‌ات را بنویس.', true); return; }
-    S.src = src;
-    say('در حال دریافت بازی‌های ' + u + '…');
-    var job;
-    if (src === 'cc') {
-      var base = 'https://api.chess.com/pub/player/' + encodeURIComponent(u.toLowerCase());
-      var live = fetch(base + '/games/archives').then(function (r) {
-        if (r.status === 404) throw new Error('nouser');
-        if (!r.ok) throw new Error('http');
-        return r.json();
-      }).then(function (j) {
-        var arcs = (j.archives || []).slice(-2);
-        if (!arcs.length) return '';
-        return Promise.all(arcs.map(function (a) { return fetch(a + '/pgn').then(function (r) { return r.ok ? r.text() : ''; }); })).then(function (p) { return p.join('\n\n'); });
-      });
-      // Games this site keeps in its own data folder, filled by the sync job.
-      var kept = fetch('data/' + encodeURIComponent(u.toLowerCase()) + '.pgn', { cache: 'no-cache' })
-        .then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
-      job = Promise.all([kept, live.catch(function (e) { return e; })]).then(function (res) {
-        var k = res[0], l = res[1];
-        if (l instanceof Error) { if (k) return mergePGN(k, ''); throw l; }
-        return mergePGN(k, l);
-      });
-    } else {
-      job = fetch('https://lichess.org/api/games/user/' + encodeURIComponent(u) + '?max=100&clocks=true&opening=true', { headers: { Accept: 'application/x-chess-pgn' } })
-        .then(function (r) { if (r.status === 404) throw new Error('nouser'); if (!r.ok) throw new Error('http'); return r.text(); });
-    }
-    job.then(function (txt) {
-      if (!txt || !txt.trim()) throw new Error('nogames');
-      say('بازی‌ها رسید. در حال تحلیل…');
-      finish(txt);
-    }).catch(function (e) {
-      if (e.message === 'nouser') say('کاربری با این نام پیدا نشد.', true);
-      else if (e.message === 'nogames') say('برای این کاربر بازی‌ای در دو ماه اخیر پیدا نشد.', true);
-      else say('اتصال برقرار نشد. اینترنت را بررسی کن و دوباره امتحان کن، یا فایل PGN را دستی وارد کن.', true);
-    });
-  }
-
   var RECENT = 300;
-  function mergePGN(a, b) {
-    function split(t) { return (t || '').replace(/\r/g, '').split(/\n\s*\n(?=\[Event )/).map(function (s) { return s.trim(); }).filter(Boolean); }
-    function key(g) { var m = g.match(/\[Link "([^"]+)"\]/); return m ? m[1] : g; }
-    var out = split(a), seen = {};
-    out.forEach(function (g) { seen[key(g)] = 1; });
-    split(b).forEach(function (g) { var k = key(g); if (!seen[k]) { seen[k] = 1; out.push(g); } });
-    // The report reads the most recent games; the full history stays in data/.
-    return out.slice(-RECENT).join('\n\n');
-  }
 
-  function bindAuto() {
-    var un = document.getElementById('uname');
-    if (!un) return;
-    un.addEventListener('input', function () { S.user = un.value; });
-    un.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); autoFetch('cc'); } });
-    document.getElementById('auto-cc').addEventListener('click', function () { autoFetch('cc'); });
-    document.getElementById('auto-li').addEventListener('click', function () { autoFetch('li'); });
-  }
+  // ---------- account (Supabase) ----------
+  var SB = { url: 'https://ktofakscjsegdiwwjdqm.supabase.co', key: 'sb_publishable_bjRnZXoQ0uKchjDRw82fPA_q4U5skmK' };
+  var session = null;
 
-  function readFiles(files) {
-    if (!files || !files.length) return;
-    var parts = [], left = files.length;
-    Array.prototype.forEach.call(files, function (f) {
-      var r = new FileReader();
-      r.onload = function () { parts.push(String(r.result)); if (--left === 0) finish(parts.join('\n\n')); };
-      r.onerror = function () { if (--left === 0) finish(parts.join('\n\n')); };
-      r.readAsText(f);
+  function saveSession(s) { session = s; if (s) store('shatranj.session', JSON.stringify(s)); else forget('shatranj.session'); }
+  function parse(r) {
+    return r.text().then(function (t) {
+      var j = null;
+      try { j = t ? JSON.parse(t) : null; } catch (e) { j = { message: t }; }
+      if (!r.ok) {
+        var e = new Error((j && (j.msg || j.message || j.error_description || j.error)) || ('HTTP ' + r.status));
+        e.status = r.status; e.code = j && (j.code || j.error_code);
+        throw e;
+      }
+      return j;
     });
   }
+  function authReq(path, body, tok) {
+    var h = { apikey: SB.key, 'Content-Type': 'application/json' };
+    if (tok) h.Authorization = 'Bearer ' + tok;
+    return fetch(SB.url + '/auth/v1/' + path, { method: body ? 'POST' : 'GET', headers: h, body: body ? JSON.stringify(body) : undefined }).then(parse);
+  }
+  function toSession(j) {
+    return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: j.expires_at || (Math.floor(Date.now() / 1000) + (+j.expires_in || 3600)), user: j.user };
+  }
+  function signUp(email, pw, name) {
+    return authReq('signup', { email: email, password: pw, data: { display_name: name } }).then(function (j) {
+      if (j && j.access_token) { saveSession(toSession(j)); return 'in'; }
+      return 'confirm';
+    });
+  }
+  function signIn(email, pw) { return authReq('token?grant_type=password', { email: email, password: pw }).then(function (j) { saveSession(toSession(j)); }); }
+  function token() {
+    if (!session) return Promise.resolve(null);
+    if (session.expires_at - 60 > Date.now() / 1000) return Promise.resolve(session.access_token);
+    return authReq('token?grant_type=refresh_token', { refresh_token: session.refresh_token })
+      .then(function (j) { saveSession(toSession(j)); return session.access_token; })
+      .catch(function (e) { if (e.status >= 400 && e.status < 500) saveSession(null); throw e; });
+  }
+  function signOut() {
+    var t = session && session.access_token;
+    saveSession(null);
+    if (t) fetch(SB.url + '/auth/v1/logout', { method: 'POST', headers: { apikey: SB.key, Authorization: 'Bearer ' + t } }).catch(function () { });
+    S.rep = null; S.profile = null; S.stage = null; S.club = null; S.board = null; S.clubLoaded = false; S.prog = {}; S.sync = null; S.syncErr = null; S.fatal = null;
+    go('report');
+  }
+  function db(method, path, body, prefer) {
+    return token().then(function (t) {
+      var h = { apikey: SB.key, 'Content-Type': 'application/json' };
+      if (t) h.Authorization = 'Bearer ' + t;
+      if (prefer) h.Prefer = prefer;
+      return fetch(SB.url + '/rest/v1/' + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined }).then(parse);
+    });
+  }
+  function rpc(fn, args) { return db('POST', 'rpc/' + fn, args || {}); }
 
-  function finish(txt) {
-    S.importMsg = { err: false, text: 'در حال خواندن بازی‌ها…' }; render();
-    setTimeout(function () {
-      var u = (S.user || '').trim();
-      var r = load(txt, u);
-      if (r.error) { S.importMsg = { err: true, text: r.error }; render(); return; }
-      store('shatranj.user', u); S.page = 0; S.gview = false;
-      if (S.src) store('shatranj.src', S.src);
-      if (u && S.src) { try { history.replaceState(null, '', location.pathname + '?u=' + encodeURIComponent(u) + (S.src === 'li' ? '&src=li' : '') + location.hash); } catch (e) { } }
-      S.importMsg = null;
-      go('report');
-    }, 20);
+  function errText(e) {
+    var m = String((e && e.message) || e || '');
+    var map = [
+      [/Invalid login credentials/i, 'ایمیل یا رمز اشتباه است.'],
+      [/already registered|already exists/i, 'با این ایمیل قبلاً حساب ساخته شده. وارد شو.'],
+      [/Password should be|at least 6/i, 'رمز باید حداقل ۶ حرف باشد.'],
+      [/Email not confirmed/i, 'ایمیلت هنوز تأیید نشده. لینک تأیید را در ایمیلت بزن.'],
+      [/valid email|invalid format|email address/i, 'ایمیل درست نیست.'],
+      [/rate limit|too many/i, 'درخواست‌ها زیاد شد. چند دقیقه بعد دوباره امتحان کن.'],
+      [/invalid username/, 'نام کاربری Chess.com درست نیست.'],
+      [/^taken$/, 'این حساب Chess.com قبلاً به کاربر دیگری وصل شده.'],
+      [/no such player/, 'چنین کاربری در Chess.com پیدا نشد.'],
+      [/code not found/, 'کد هنوز در پروفایل Chess.com دیده نمی‌شود. اگر ذخیره‌اش کرده‌ای، Chess.com پروفایل را با کمی تأخیر به‌روز می‌کند؛ چند دقیقه بعد دوباره «بررسی کن» را بزن.'],
+      [/no such club/, 'باشگاهی با این کد پیدا نشد.'],
+      [/chess\.com responded/, 'Chess.com الان جواب نمی‌دهد. کمی بعد دوباره امتحان کن.'],
+      [/Failed to fetch|NetworkError|Load failed/i, 'اتصال برقرار نشد. اینترنت را بررسی کن.']
+    ];
+    for (var i = 0; i < map.length; i++) if (map[i][0].test(m)) return map[i][1];
+    return 'خطا: ' + m;
+  }
+
+  // ---------- account data ----------
+  function loadAccount() {
+    S.stage = 'loading'; S.fatal = null; render();
+    db('GET', 'profiles?select=*&id=eq.' + session.user.id).then(function (rows) {
+      S.profile = rows && rows[0];
+      if (!S.profile) throw new Error('پروفایل پیدا نشد. یک بار خارج شو و دوباره وارد شو.');
+      if (!S.profile.chess_username) { S.stage = 'link'; render(); return; }
+      S.stage = 'ready'; S.user = S.profile.chess_username; render();
+      loadProgress();
+      return fetchGames().then(function () { render(); syncLoop(0); });
+    }).catch(fail);
+    loadClub();
+  }
+  function fail(e) {
+    if (e && e.status === 401) { signOut(); return; }
+    S.fatal = errText(e); render();
+  }
+  function fetchGames() {
+    var u = S.profile.chess_username;
+    return db('GET', 'games?select=pgn&username=eq.' + encodeURIComponent(u) + '&order=end_time.desc&limit=' + RECENT).then(function (rows) {
+      if (!rows || !rows.length) return;
+      var keep = { view: S.view, gid: S.gid, ply: S.ply, gview: S.gview, page: S.page, ti: S.ti };
+      var r = load(rows.reverse().map(function (x) { return x.pgn; }).join('\n\n'), u);
+      if (r.ok && S.rep) { S.page = keep.page; S.ti = keep.ti; }
+    });
+  }
+  function syncLoop(added) {
+    S.syncing = true; S.syncErr = null;
+    rpc('sync_me').then(function (r) {
+      S.sync = r; added += r.added || 0;
+      if (!r.finished) { if (!S.rep) render(); return syncLoop(added); }
+      S.syncing = false;
+      if (added > 0 || !S.rep) return fetchGames().then(function () { render(); });
+      if (S.view === 'account') render();
+    }).catch(function (e) { S.syncing = false; S.syncErr = errText(e); render(); });
+  }
+  function loadProgress() {
+    db('GET', 'train_progress?select=game_url,ply,solved,attempts').then(function (rows) {
+      S.prog = {};
+      (rows || []).forEach(function (p) { S.prog[p.game_url + ':' + p.ply] = p; });
+      if (S.view === 'train') render();
+    }).catch(function () { });
+  }
+  function trainKey(it) { return (it.game.g.h.Link || it.game.g.h.Site + it.game.date) + ':' + it.b.ply; }
+  function saveProgress(it, solved) {
+    var k = trainKey(it), prev = S.prog[k] || {};
+    var row = { user_id: session.user.id, game_url: k.slice(0, k.lastIndexOf(':')), ply: it.b.ply, solved: solved || !!prev.solved, attempts: (prev.attempts || 0) + (S.tatt || 0) + 1, updated_at: new Date().toISOString() };
+    S.prog[k] = row;
+    db('POST', 'train_progress', row, 'resolution=merge-duplicates,return=minimal').catch(function () { });
+  }
+  function loadClub() {
+    db('GET', 'club_members?select=role,clubs(id,name,join_code)&user_id=eq.' + session.user.id).then(function (rows) {
+      var r = rows && rows[0];
+      S.club = r && r.clubs ? { id: r.clubs.id, name: r.clubs.name, code: r.clubs.join_code, role: r.role } : null;
+      S.clubLoaded = true; S.board = null;
+      if (S.view === 'club') render();
+      if (S.club) rpc('club_board', { cid: S.club.id }).then(function (b) { S.board = b || []; if (S.view === 'club') render(); }).catch(function () { S.board = []; });
+    }).catch(function () { S.clubLoaded = true; });
+  }
+
+  // ---------- account views ----------
+  function feat() {
+    var h = '<div class="feat">';
+    [['blunder', 'گزارش', 'ضعف اصلی و الگوهای تکراری تو'], ['opening', 'بازی‌ها', 'مرور حرکت به حرکت، با اشتباه‌های مشخص'], ['time', 'تمرین', 'موقعیت‌هایی از بازی‌های خودت']].forEach(function (f) {
+      h += '<div class="frow">' + wtile(f[0], true) + '<div><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>';
+    });
+    return h + '</div>';
+  }
+  function brandHead() { return '<div class="wm-head"><span class="tile t-purple">' + ROOK + '</span><p class="eyebrow" style="color:var(--accent)">شطرنج</p></div>'; }
+
+  function viewAuth() {
+    var up = S.amode === 'up';
+    var h = '<section class="welcome"><div class="card wcard">' + brandHead();
+    h += '<h1>ضعف‌های تکراری بازی‌ات را پیدا کن</h1>';
+    h += '<div class="seg" role="group" aria-label="ورود یا ثبت‌نام"><button type="button" data-act="amode-in" aria-pressed="' + !up + '">ورود</button><button type="button" data-act="amode-up" aria-pressed="' + up + '">ثبت‌نام</button></div>';
+    h += '<form id="authf" class="form" novalidate>';
+    if (up) h += '<div class="field"><label for="aname">اسمت</label><input id="aname" autocomplete="name" required></div>';
+    h += '<div class="field"><label for="aemail">ایمیل</label><input id="aemail" type="email" dir="ltr" autocomplete="email" autocapitalize="off" required></div>';
+    h += '<div class="field"><label for="apw">رمز عبور</label><input id="apw" type="password" dir="ltr" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="6" required></div>';
+    h += '<button type="submit" class="btn primary">' + (up ? 'ساختن حساب' : 'ورود') + '</button>';
+    h += '<p class="fine" id="amsg" role="status">' + (S.amsg ? esc(S.amsg) : '') + '</p></form></div>';
+    return h + feat() + '</section>';
+  }
+
+  function viewLoading() {
+    var h = '<section class="welcome"><div class="card wcard">' + brandHead();
+    if (S.fatal) h += '<h1>چیزی درست کار نکرد</h1><p class="err">' + esc(S.fatal) + '</p><div class="actions"><button type="button" class="btn primary" data-act="retry">دوباره امتحان کن</button><button type="button" class="btn ghost" data-act="signout">خروج</button></div>';
+    else h += '<h1>در حال باز کردن حسابت…</h1>';
+    return h + '</div></section>';
+  }
+
+  function viewLink() {
+    var p = S.profile, h = '<section class="welcome"><div class="card wcard">' + brandHead();
+    if (!p.pending_username || !p.verify_code) {
+      h += '<h1>حساب Chess.com خودت را وصل کن</h1>';
+      h += '<p class="lead">برای اینکه فقط خودت به بازی‌هایت دسترسی داشته باشی، اول باید ثابت کنی این حساب مال توست. یک دقیقه طول می‌کشد.</p>';
+      h += '<form id="linkf" class="form" novalidate><div class="field"><label for="cuser">نام کاربری تو در Chess.com</label><input id="cuser" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" required></div>';
+      h += '<button type="submit" class="btn primary">ادامه</button><p class="fine" id="lmsg" role="status">' + (S.lmsg ? esc(S.lmsg) : '') + '</p></form>';
+    } else {
+      h += '<h1>این کد را در پروفایل Chess.com بگذار</h1>';
+      h += '<div class="codebox"><span class="mono">' + esc(p.verify_code) + '</span><button type="button" class="btn" data-copy="' + esc(p.verify_code) + '">کپی</button></div>';
+      h += '<ol class="steps"><li>کد بالا را کپی کن.</li><li>در Chess.com به تنظیمات پروفایل برو و کد را در خانه‌ی Location بگذار و ذخیره کن.</li><li>برگرد و «بررسی کن» را بزن. بعدش می‌توانی کد را پاک کنی.</li></ol>';
+      h += '<a class="btn" href="https://www.chess.com/settings/profile" target="_blank" rel="noopener">باز کردن تنظیمات پروفایل Chess.com</a>';
+      h += '<button type="button" class="btn primary" data-act="link-check">بررسی کن</button>';
+      h += '<p class="fine" id="lmsg" role="status">' + (S.lmsg ? esc(S.lmsg) : 'برای حساب <span class="mono">' + esc(p.pending_username) + '</span> · <button type="button" class="linkbtn" style="min-height:0;padding:0;font-size:12px" data-act="link-reset">نام دیگر</button>') + '</p>';
+    }
+    return h + '</div></section>';
+  }
+
+  function viewSync() {
+    var s = S.sync, h = '<section class="welcome"><div class="card wcard">' + brandHead();
+    if (S.syncErr) {
+      h += '<h1>آوردن بازی‌ها متوقف شد</h1><p class="err">' + esc(S.syncErr) + '</p><button type="button" class="btn primary" data-act="sync">دوباره امتحان کن</button>';
+    } else if (s && s.finished && !S.rep) {
+      h += '<h1>بازی‌ای پیدا نشد</h1><p class="lead">در حساب Chess.com تو هنوز بازی‌ای نیست. بعد از چند بازی دوباره سر بزن.</p>';
+    } else {
+      var pc = s && s.total ? s.done / s.total : 0;
+      h += '<h1>در حال آوردن بازی‌هایت از Chess.com</h1>';
+      h += '<div class="meter"><div class="track"><div class="fill" style="width:' + Math.round(pc * 100) + '%"></div></div><span>' + (s && s.total ? 'ماه ' + fa(s.done) + ' از ' + fa(s.total) : 'شروع…') + '</span></div>';
+      h += '<p class="fine">بار اول کل تاریخچه‌ات خوانده می‌شود و در حسابت ذخیره می‌شود. فقط همین یک بار طول می‌کشد.</p>';
+    }
+    return h + '</div></section>';
+  }
+
+  function viewAccount() {
+    var p = S.profile || {}, s = S.sync;
+    var st = S.syncing ? 'در حال همگام‌سازی…' : S.syncErr ? S.syncErr : s ? 'به‌روز' : '–';
+    var h = '<div class="view iwrap">' + head('حساب') + '<div class="card icard"><div class="kv">';
+    h += '<div><span>اسم</span><span>' + esc(p.display_name || '') + '</span></div>';
+    h += '<div><span>ایمیل</span><span class="mono">' + esc(session.user && session.user.email || '') + '</span></div>';
+    h += '<div><span>Chess.com</span><span class="mono">' + esc(p.chess_username || 'وصل نشده') + '</span></div>';
+    h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
+    if (S.rep) h += '<div><span>بازی‌های گزارش</span><span>' + fa(S.rep.games.length) + ' بازی آخر</span></div>';
+    h += '</div><p class="fine">بازی‌های تازه هر ۶ ساعت خودکار از Chess.com به حسابت اضافه می‌شوند.</p>';
+    h += '<div class="stack">' + (p.chess_username ? '<button type="button" class="btn" data-act="sync"' + (S.syncing ? ' disabled' : '') + '>همگام‌سازی همین الان</button>' : '') + '<button type="button" class="btn ghost" data-act="signout">خروج از حساب</button></div>';
+    return h + '</div></div>';
+  }
+
+  function viewClub() {
+    var h = '<div class="view iwrap">';
+    if (!S.clubLoaded) return h + head('باشگاه') + '<div class="card fine">در حال بارگذاری…</div></div>';
+    if (!S.club) {
+      h += head('باشگاه') + '<div class="card icard">';
+      h += '<form id="joinf" class="form" novalidate><h2>پیوستن به باشگاه</h2><div class="field"><label for="jcode">کد باشگاه</label><input id="jcode" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC123" required></div><button type="submit" class="btn primary">پیوستن</button></form>';
+      h += '<hr class="sep">';
+      h += '<form id="newf" class="form" novalidate><h2>ساختن باشگاه تازه</h2><div class="field"><label for="cname">اسم باشگاه</label><input id="cname" autocomplete="off" required></div><button type="submit" class="btn">ساختن</button></form>';
+      h += '<p class="fine" id="cmsg" role="status">' + (S.cmsg ? esc(S.cmsg) : '') + '</p></div></div>';
+      return h;
+    }
+    h += head(esc(S.club.name), '<button type="button" class="uchip" data-copy="' + esc(S.club.code) + '" aria-label="کپی کد باشگاه"><span>کد</span><span class="mono">' + esc(S.club.code) + '</span></button>');
+    h += '<div class="card blist">';
+    if (!S.board) h += '<p class="fine">در حال بارگذاری رده‌بندی…</p>';
+    else if (!S.board.length) h += '<p class="fine">هنوز عضوی نیست.</p>';
+    else S.board.forEach(function (m, i) {
+      var sc = m.score_30d == null ? '–' : pct(+m.score_30d);
+      h += '<div class="brow' + (m.is_me ? ' me' : '') + '"><span class="rank">' + fa(i + 1) + '</span><span class="who"><b>' + esc(m.display_name) + (m.is_me ? ' <small class="fine">(تو)</small>' : '') + '</b><small class="mono">' + esc(m.chess_username || 'وصل نشده') + '</small></span>';
+      h += '<span class="meta"><b class="mono">' + (m.rating != null ? esc(m.rating) : '–') + '</b><span>۳۰ روز: ' + fa(m.games_30d || 0) + ' بازی · ' + sc + '</span></span></div>';
+    });
+    h += '</div><p class="fine" style="flex:none">ریتینگ بلیتز. کد باشگاه را به هم‌بازی‌ها بده تا عضو شوند. · <button type="button" class="linkbtn" style="min-height:0;padding:0;font-size:12px" data-act="leave">ترک باشگاه</button></p>';
+    return h + '</div>';
+  }
+
+  // ---------- account events ----------
+  function act(a, t) {
+    if (a === 'amode-in' || a === 'amode-up') { S.amode = a === 'amode-up' ? 'up' : 'in'; S.amsg = ''; render(); return; }
+    if (a === 'retry') { loadAccount(); return; }
+    if (a === 'signout') { signOut(); return; }
+    if (a === 'sync') { S.syncErr = null; syncLoop(0); render(); return; }
+    if (a === 'link-reset') { S.profile.pending_username = null; S.profile.verify_code = null; S.lmsg = ''; render(); return; }
+    if (a === 'link-check') {
+      S.lmsg = 'در حال بررسی پروفایل Chess.com…'; render();
+      rpc('confirm_link').then(function (u) { S.profile.chess_username = u; S.lmsg = ''; S.stage = 'ready'; S.user = u; S.sync = null; render(); loadProgress(); syncLoop(0); })
+        .catch(function (e) { S.lmsg = errText(e); render(); });
+      return;
+    }
+    if (a === 'leave') {
+      if (!S.club) return;
+      rpc('leave_club', { cid: S.club.id }).then(function () { S.club = null; S.board = null; render(); }).catch(function (e) { S.cmsg = errText(e); render(); });
+    }
+  }
+
+  app.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    if (f.id === 'authf') {
+      var up = S.amode === 'up', email = val('aemail'), pw = document.getElementById('apw').value, name = val('aname');
+      if (!email || !pw || (up && !name)) { S.amsg = 'همه‌ی خانه‌ها را پر کن.'; render(); return; }
+      S.amsg = up ? 'در حال ساختن حساب…' : 'در حال ورود…'; render();
+      (up ? signUp(email, pw, name) : signIn(email, pw).then(function () { return 'in'; })).then(function (r) {
+        if (r === 'confirm') { S.amode = 'in'; S.amsg = 'حساب ساخته شد. لینک تأیید به ایمیلت رفت؛ بزنش و بعد وارد شو.'; render(); return; }
+        S.amsg = ''; loadAccount();
+      }).catch(function (err) { S.amsg = errText(err); render(); });
+    }
+    if (f.id === 'linkf') {
+      var cu = val('cuser');
+      if (!cu) return;
+      S.lmsg = 'در حال پیدا کردن حساب…'; render();
+      rpc('start_link', { u: cu }).then(function (code) { S.profile.pending_username = cu.toLowerCase(); S.profile.verify_code = code; S.lmsg = ''; render(); })
+        .catch(function (err) { S.lmsg = errText(err); render(); });
+    }
+    if (f.id === 'joinf' || f.id === 'newf') {
+      var j = f.id === 'joinf', v = val(j ? 'jcode' : 'cname');
+      if (!v) return;
+      S.cmsg = j ? 'در حال پیوستن…' : 'در حال ساختن…'; render();
+      rpc(j ? 'join_club' : 'create_club', j ? { code: v } : { club_name: v }).then(function () { S.cmsg = ''; S.clubLoaded = false; render(); loadClub(); })
+        .catch(function (err) { S.cmsg = errText(err); render(); });
+    }
+  });
+
+  function copyText(t, btn) {
+    var done = function () { var o = btn.innerHTML; btn.textContent = 'کپی شد'; setTimeout(function () { btn.innerHTML = o; }, 1400); };
+    try { navigator.clipboard.writeText(t).then(done, function () { }); } catch (e) { }
   }
 
   // ---------- boot ----------
-  forget('shatranj.pgn');
-  S.user = recall('shatranj.user') || '';
-  var q = null, qsrc = recall('shatranj.src') || 'cc';
-  try { var sp = new URLSearchParams(location.search); q = sp.get('u'); if (sp.get('src') === 'li') qsrc = 'li'; } catch (e) { }
-  if (q) S.user = q;
-  window.addEventListener('hashchange', route);
-  route();
-  // No games in this browser but we know whose games to show: fetch them again.
-  if (S.user) autoFetch(qsrc);
+  (function () {
+    try { session = JSON.parse(recall('shatranj.session') || 'null'); } catch (e) { session = null; }
+    forget('shatranj.pgn'); forget('shatranj.src');
+    // Coming back from an email confirmation link: Supabase puts the session in the hash.
+    var hp = /access_token=([^&]+)/.exec(location.hash || '');
+    if (hp) {
+      var p = {};
+      location.hash.slice(1).split('&').forEach(function (kv) { var a = kv.split('='); p[a[0]] = decodeURIComponent(a[1] || ''); });
+      try { history.replaceState(null, '', location.pathname + '#report'); } catch (e) { location.hash = 'report'; }
+      authReq('user', null, p.access_token).then(function (u) {
+        saveSession({ access_token: p.access_token, refresh_token: p.refresh_token, expires_at: +p.expires_at || Math.floor(Date.now() / 1000) + (+p.expires_in || 3600), user: u });
+        loadAccount();
+      }).catch(function () { render(); });
+    }
+    window.addEventListener('hashchange', route);
+    route();
+    if (session && !hp) loadAccount();
+  })();
 })();
 
 </script>
