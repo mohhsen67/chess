@@ -14,7 +14,6 @@
 - `src/engine.js` — قوانین شطرنج، خواندن PGN، جست‌وجوی مهره‌ای
 - `src/analyze.js` — ساختن گزارش از بازی‌ها
 - `src/ui.js` و `src/template.html` — رابط کاربری
-- `src/samples.pgn` — بازی‌های نمونه (ساختگی)، ساخته‌شده با `src/gen.js`
 
 ساخت دوباره‌ی `index.html`:
 

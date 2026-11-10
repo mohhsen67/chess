@@ -4,7 +4,7 @@
   var PNAME = { K: 'شاه', Q: 'وزیر', R: 'رخ', B: 'فیل', N: 'اسب', P: 'سرباز' };
   var app = document.getElementById('app');
   var S = {
-    rep: null, sample: true, view: 'report', filter: 'all', weakFilter: null,
+    rep: null, view: 'report', filter: 'all', weakFilter: null,
     gid: null, ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: '', importMsg: null
   };
 
@@ -64,13 +64,13 @@
   function scoreCol(v) { return v >= 0.55 ? '#4CD4A8' : v < 0.45 ? '#F05A6E' : '#B9A6FF'; }
 
   // ---------- data ----------
-  function load(text, user, sample) {
+  function load(text, user) {
     var games;
     try { games = Chess.parsePGN(text); } catch (e) { games = []; }
     if (!games.length) return { error: 'هیچ بازی‌ای در این متن پیدا نشد. مطمئن شو فایل PGN است.' };
     var rep = Analyze.run(games, user);
     if (!rep.games.length) return { error: 'بازی‌ها خوانده شد، ولی نام کاربری «' + user + '» در هیچ‌کدام نبود.' };
-    S.rep = rep; S.sample = sample; S.gid = null; S.ply = -1; S.ti = 0; S.tsel = null; S.tfb = null; S.tdone = false; S.tcache = {};
+    S.rep = rep; S.gid = null; S.ply = -1; S.ti = 0; S.tsel = null; S.tfb = null; S.tdone = false; S.tcache = {};
     S.weakFilter = null; S.filter = 'all';
     return { ok: true, n: rep.games.length, skipped: games.length - rep.games.length };
   }
@@ -101,8 +101,27 @@
 
   // ---------- views ----------
   function banner() {
-    if (S.sample) return '<div class="banner"><span><b>این گزارش نمونه است.</b> از ' + fa(S.rep.games.length) + ' بازی ساختگی ساخته شده تا ببینی شطرنج چه کار می‌کند.</span><a class="btn primary" href="#import">بازی‌های خودت را وارد کن</a></div>';
     return '<div class="banner"><span>گزارش برای <b class="mono">' + esc(S.rep.user) + '</b> از ' + fa(S.rep.games.length) + ' بازی.</span><a class="btn" href="#import">تغییر بازی‌ها</a></div>';
+  }
+
+  function autoBlock() {
+    return '<div class="field"><label for="uname">نام کاربری تو در Chess.com یا Lichess</label><input id="uname" dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="username" value="' + esc(S.user || '') + '"></div>' +
+      '<div class="actions"><button type="button" class="btn primary" id="auto-cc">دریافت از Chess.com</button><button type="button" class="btn" id="auto-li">دریافت از Lichess</button></div>' +
+      '<p class="fine" id="auto-msg" role="status"></p>';
+  }
+
+  function viewWelcome() {
+    var h = '<section class="welcome"><div class="card wcard"><span class="tile t-purple" style="align-self:flex-start">' + ROOK + '</span>';
+    h += '<h1>ضعف‌های تکراری بازی‌ات را پیدا کن</h1>';
+    h += '<p class="lead">نام کاربری‌ات را بنویس. شطرنج بازی‌های دو ماه اخیرت را می‌خواند و نشان می‌دهد بیشتر کجا امتیاز از دست می‌دهی.</p>';
+    h += autoBlock();
+    h += '<a class="fine" href="#import" style="color:var(--muted)">یا فایل PGN را دستی وارد کن</a></div>';
+    h += '<div class="feat">';
+    [['blunder', 'گزارش', 'ضعف اصلی و الگوهای تکراری تو'], ['opening', 'بازی‌ها', 'مرور حرکت به حرکت، با اشتباه‌های مشخص'], ['time', 'تمرین', 'موقعیت‌هایی از بازی‌های خودت']].forEach(function (f) {
+      h += '<div class="frow">' + wtile(f[0], true) + '<div><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>';
+    });
+    h += '</div></section>';
+    return h;
   }
 
   function viewReport() {
@@ -306,17 +325,15 @@
     var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1;
     var pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
     function two(n) { return n < 10 ? '0' + n : '' + n; }
-    var h = '<section class="import"><div class="card"><h2>۱. فایل بازی‌هایت را بگیر</h2><p class="fine">شطرنج خودش به Chess.com وصل نمی‌شود؛ فایل PGN را از آن‌جا می‌گیری و این‌جا می‌گذاری.</p>';
-    h += '<div class="field" style="margin-top:16px"><label for="uname">نام کاربری تو</label><input id="uname" dir="ltr" autocomplete="off" spellcheck="false" placeholder="Chess.com یا Lichess" value="' + esc(u) + '"></div>';
-    h += '<div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="auto-cc">دریافت خودکار از Chess.com</button><button type="button" class="btn" id="auto-li">از Lichess</button></div>';
-    h += '<p class="fine" id="auto-msg" role="status" style="margin-top:8px"></p>';
-    h += '<p class="fine" style="margin-top:14px">اگر دریافت خودکار این‌جا کار نکرد، دستی:</p>';
+    var h = '<section class="import"><div class="card"><h2>دریافت خودکار</h2><p class="fine">نام کاربری‌ات را بنویس و دکمه را بزن.</p>';
+    h += '<div style="display:flex;flex-direction:column;gap:14px;margin-top:16px">' + autoBlock() + '</div>';
+    h += '<p class="fine" style="margin-top:18px">یا دستی: فایل را از این لینک‌ها بگیر و در کادر کناری بگذار.</p>';
     h += '<ol class="steps"><li><span>یکی از لینک‌های زیر را باز کن. مرورگر فایل را دانلود می‌کند.</span></li><li><span>فایل را در کادر کناری رها کن یا انتخابش کن.</span></li><li><span>گزارش با بازی‌های خودت ساخته می‌شود و در همین مرورگر می‌ماند.</span></li></ol>';
     h += '<div class="dl" id="dl">' + dlLinks(u, y, m, py, pm, two) + '</div></div>';
-    h += '<div class="card" style="display:flex;flex-direction:column;gap:16px"><h2>۲. بازی‌ها را این‌جا بگذار</h2>';
+    h += '<div class="card" style="display:flex;flex-direction:column;gap:16px"><h2>ورود دستی فایل PGN</h2>';
     h += '<label class="drop" id="drop" for="file">' + ICON.upload + '<span><b style="color:var(--text)">فایل PGN را این‌جا رها کن</b><br>یا بزن تا انتخابش کنی</span><input id="file" type="file" accept=".pgn,.txt,application/x-chess-pgn,text/plain" multiple class="sr"></label>';
     h += '<div class="field"><label for="paste">یا متن PGN را بچسبان</label><textarea id="paste" placeholder="[Event &quot;Live Chess&quot;] ..."></textarea></div>';
-    h += '<div class="actions"><button type="button" class="btn primary" id="go">تحلیل کن</button>' + (S.sample ? '' : '<button type="button" class="btn ghost" id="reset">برگشت به نمونه</button>') + '</div>';
+    h += '<div class="actions"><button type="button" class="btn primary" id="go">تحلیل کن</button>' + (S.rep ? '<button type="button" class="btn ghost" id="reset">پاک کردن بازی‌ها</button>' : '') + '</div>';
     if (S.importMsg) h += '<p class="' + (S.importMsg.err ? 'err' : 'ok-msg') + '" role="status">' + esc(S.importMsg.text) + '</p>';
     h += '</div></section>';
     return h;
@@ -334,13 +351,16 @@
   function render() {
     var v = S.view;
     document.querySelectorAll('.nav a').forEach(function (a) { if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-    var html = v === 'games' ? viewGames() : v === 'train' ? viewTrain() : v === 'import' ? viewImport() : viewReport();
+    document.body.classList.toggle('noreport', !S.rep);
+    var html = v === 'import' ? viewImport() : !S.rep ? viewWelcome() : v === 'games' ? viewGames() : v === 'train' ? viewTrain() : viewReport();
     app.innerHTML = html;
+    bindAuto();
     if (v === 'games') {
       var c = app.querySelector('.mrow button.cur'), box = document.getElementById('moves');
       if (c && box) box.scrollTop = c.offsetTop - box.clientHeight / 2;
     }
     if (v === 'import') bindImport();
+    if (!S.rep && v !== 'import') { var un = document.getElementById('uname'); if (un && !un.value) un.focus({ preventScroll: true }); }
   }
 
   function route() {
@@ -459,9 +479,7 @@
     var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1;
     var pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
     function two(n) { return n < 10 ? '0' + n : '' + n; }
-    un.addEventListener('input', function () { S.user = un.value; dl.innerHTML = dlLinks(un.value, y, m, py, pm, two); });
-    document.getElementById('auto-cc').addEventListener('click', function () { autoFetch('cc'); });
-    document.getElementById('auto-li').addEventListener('click', function () { autoFetch('li'); });
+    un.addEventListener('input', function () { dl.innerHTML = dlLinks(un.value, y, m, py, pm, two); });
     var drop = document.getElementById('drop'), file = document.getElementById('file');
     ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
     ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
@@ -473,7 +491,7 @@
       finish(txt);
     });
     var rs = document.getElementById('reset');
-    if (rs) rs.addEventListener('click', function () { forget('shatranj.pgn'); forget('shatranj.user'); load(SAMPLES, 'Mannheim_Blitz', true); S.importMsg = null; go('report'); });
+    if (rs) rs.addEventListener('click', function () { forget('shatranj.pgn'); S.rep = null; S.importMsg = null; go('report'); });
   }
 
 
@@ -505,8 +523,17 @@
     }).catch(function (e) {
       if (e.message === 'nouser') say('کاربری با این نام پیدا نشد.', true);
       else if (e.message === 'nogames') say('برای این کاربر بازی‌ای در دو ماه اخیر پیدا نشد.', true);
-      else say('این نسخه‌ی داخل Claude اجازه‌ی وصل شدن به سایت‌های دیگر را ندارد. نسخه‌ی مستقل سایت را باز کن، یا از لینک‌های دستی زیر استفاده کن.', true);
+      else say('اتصال برقرار نشد. اینترنت را بررسی کن و دوباره امتحان کن، یا فایل PGN را دستی وارد کن.', true);
     });
+  }
+
+  function bindAuto() {
+    var un = document.getElementById('uname');
+    if (!un) return;
+    un.addEventListener('input', function () { S.user = un.value; });
+    un.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); autoFetch('cc'); } });
+    document.getElementById('auto-cc').addEventListener('click', function () { autoFetch('cc'); });
+    document.getElementById('auto-li').addEventListener('click', function () { autoFetch('li'); });
   }
 
   function readFiles(files) {
@@ -524,7 +551,7 @@
     S.importMsg = { err: false, text: 'در حال خواندن بازی‌ها…' }; render();
     setTimeout(function () {
       var u = (S.user || '').trim();
-      var r = load(txt, u, false);
+      var r = load(txt, u);
       if (r.error) { S.importMsg = { err: true, text: r.error }; render(); return; }
       store('shatranj.pgn', txt); store('shatranj.user', u);
       S.importMsg = null;
@@ -533,10 +560,9 @@
   }
 
   // ---------- boot ----------
-  var SAMPLES = document.getElementById('samples').textContent;
   var saved = recall('shatranj.pgn');
   S.user = recall('shatranj.user') || '';
-  if (!(saved && load(saved, S.user, false).ok)) load(SAMPLES, 'Mannheim_Blitz', true);
+  if (saved) load(saved, S.user);
   window.addEventListener('hashchange', route);
   route();
 })();

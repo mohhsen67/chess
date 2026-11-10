@@ -254,6 +254,19 @@ button.sq{cursor:pointer}
 .gres{font-weight:600;font-size:13px}
 .gres.W{color:var(--win)}.gres.L{color:var(--loss)}.gres.D{color:var(--draw)}
 
+/* welcome */
+.welcome{max-width:560px;width:100%;margin:4vh auto 0;display:flex;flex-direction:column;gap:18px}
+.wcard{display:flex;flex-direction:column;gap:18px;padding:30px;background:var(--tint);border-color:var(--tint-line)}
+.wcard h1{font-size:clamp(26px,6vw,34px);font-weight:800;letter-spacing:-.015em}
+.wcard .lead{color:#C4CCDC;font-size:16px}
+.wcard .field input{font-size:17px}
+.feat{display:flex;flex-direction:column;gap:4px;padding:6px 4px}
+.frow{display:flex;gap:14px;align-items:center;padding:10px 0}
+.frow div{display:flex;flex-direction:column;line-height:1.5}
+.frow b{font-weight:600;font-size:15px}
+.frow span{font-size:13px;color:var(--muted)}
+body.noreport .nav a:not([data-view="import"]){opacity:.45;pointer-events:none}
+
 @media (max-width:980px){
   .hero,.grid2,.import{grid-template-columns:minmax(0,1fr)}
   .gwrap{grid-template-columns:minmax(0,1fr)}
@@ -299,7 +312,6 @@ button.sq{cursor:pointer}
 
 <main id="app" aria-live="polite"></main>
 
-<script type="text/plain" id="samples">/*SAMPLES*/</script>
 <script>
 /*ENGINE*/
 </script>
