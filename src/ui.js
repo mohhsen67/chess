@@ -595,7 +595,7 @@
     h += '<h1>ضعف‌های تکراری بازی‌ات را پیدا کن</h1>';
     h += '<div class="seg" role="group" aria-label="ورود یا ثبت‌نام"><button type="button" data-act="amode-in" aria-pressed="' + !up + '">ورود</button><button type="button" data-act="amode-up" aria-pressed="' + up + '">ثبت‌نام</button></div>';
     h += '<form id="authf" class="form" novalidate>';
-    if (up) h += '<div class="field"><label for="aname">اسمت</label><input id="aname" autocomplete="name" required></div>';
+    if (up) h += '<div class="field"><label for="aname">نام کاربری</label><input id="aname" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>';
     h += '<div class="field"><label for="aemail">ایمیل</label><input id="aemail" type="email" dir="ltr" autocomplete="email" autocapitalize="off" required></div>';
     h += '<div class="field"><label for="apw">رمز عبور</label><input id="apw" type="password" dir="ltr" autocomplete="' + (up ? 'new-password' : 'current-password') + '" minlength="6" required></div>';
     h += '<button type="submit" class="btn primary">' + (up ? 'ساختن حساب' : 'ورود') + '</button>';
@@ -647,7 +647,7 @@
     var p = S.profile || {}, s = S.sync;
     var st = S.syncing ? 'در حال همگام‌سازی…' : S.syncErr ? S.syncErr : s ? 'به‌روز' : '–';
     var h = '<div class="view iwrap">' + head('حساب') + '<div class="card icard"><div class="kv">';
-    h += '<div><span>اسم</span><span>' + esc(p.display_name || '') + '</span></div>';
+    h += '<div><span>نام کاربری</span><span>' + esc(p.display_name || '') + '</span></div>';
     h += '<div><span>ایمیل</span><span class="mono">' + esc(session.user && session.user.email || '') + '</span></div>';
     h += '<div><span>Chess.com</span><span class="mono">' + esc(p.chess_username || 'وصل نشده') + '</span></div>';
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
