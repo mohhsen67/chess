@@ -5,7 +5,7 @@
   var app = document.getElementById('app');
   var S = {
     rep: null, view: 'report', filter: 'all', weakFilter: null,
-    gid: null, ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: '', importMsg: null
+    gid: null, gview: false, page: 0, imode: 'auto', ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: '', importMsg: null
   };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -100,8 +100,10 @@
   }
 
   // ---------- views ----------
-  function banner() {
-    return '<div class="banner"><span>گزارش برای <b class="mono">' + esc(S.rep.user) + '</b> از ' + fa(S.rep.games.length) + ' بازی.</span><a class="btn" href="#import">تغییر بازی‌ها</a></div>';
+  function head(title, extra) { return '<div class="vh"><h1>' + title + '</h1>' + (extra || '') + '</div>'; }
+  var EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
+  function userChip() {
+    return '<a class="uchip" href="#import" aria-label="تغییر بازی‌ها"><span class="mono">' + esc(S.rep.user) + '</span><span>· ' + fa(S.rep.games.length) + ' بازی</span>' + EDIT + '</a>';
   }
 
   function autoBlock() {
@@ -111,11 +113,11 @@
   }
 
   function viewWelcome() {
-    var h = '<section class="welcome"><div class="card wcard"><span class="tile t-purple" style="align-self:flex-start">' + ROOK + '</span>';
+    var h = '<section class="welcome"><div class="card wcard"><div class="wm-head"><span class="tile t-purple">' + ROOK + '</span><p class="eyebrow" style="color:var(--accent)">شطرنج</p></div>';
     h += '<h1>ضعف‌های تکراری بازی‌ات را پیدا کن</h1>';
     h += '<p class="lead">نام کاربری‌ات را بنویس. شطرنج بازی‌های دو ماه اخیرت را می‌خواند و نشان می‌دهد بیشتر کجا امتیاز از دست می‌دهی.</p>';
     h += autoBlock();
-    h += '<a class="fine" href="#import" style="color:var(--muted)">یا فایل PGN را دستی وارد کن</a></div>';
+    h += '<a class="fine" href="#import">یا فایل PGN را دستی وارد کن</a></div>';
     h += '<div class="feat">';
     [['blunder', 'گزارش', 'ضعف اصلی و الگوهای تکراری تو'], ['opening', 'بازی‌ها', 'مرور حرکت به حرکت، با اشتباه‌های مشخص'], ['time', 'تمرین', 'موقعیت‌هایی از بازی‌های خودت']].forEach(function (f) {
       h += '<div class="frow">' + wtile(f[0], true) + '<div><b>' + f[1] + '</b><span>' + f[2] + '</span></div></div>';
@@ -124,62 +126,64 @@
     return h;
   }
 
-  function viewReport() {
-    var R = S.rep, w = R.weaknesses, top = w[0];
-    var n = R.games.length, t = R.tot;
-    var h = banner();
-    h += '<section class="hero">';
-    h += '<article class="card weak-main"><div class="wm-head">' + wtile(top.id) + '<p class="eyebrow">ضعف اصلی تو</p></div><h1>' + esc(top.title) + '</h1><p class="detail">' + esc(top.detail) + '</p>';
-    h += '<div class="meter"><div class="track"><div class="fill" style="width:' + Math.round(top.share * 100) + '%"></div></div><span>' + fa(top.count) + ' از ' + fa(top.of) + (top.id === 'opening' ? ' بازی' : top.id === 'convert' ? ' بازیِ نبرده' : ' باخت') + '</span></div>';
-    h += '<div class="tip">' + ICON.bulb + '<span>' + esc(top.tip) + '</span></div>';
-    h += '<div class="actions"><a class="btn primary" href="#train">تمرین روی اشتباه‌های خودت</a><button type="button" class="btn ghost" data-weak="' + top.id + '">دیدن این بازی‌ها</button></div></article>';
-    var wP = n ? t.W / n * 100 : 0, dP = n ? t.D / n * 100 : 0, lP = n ? t.L / n * 100 : 0;
-    var last = R.games[0];
-    h += '<aside class="card summary" aria-label="خلاصه"><p class="eyebrow">خلاصه‌ی ' + fa(n) + ' بازی</p>';
+  function reportCards() {
+    var R = S.rep, w = R.weaknesses, top = w[0], n = R.games.length, t = R.tot, cards = [];
+    var c = '<div class="wm-head">' + wtile(top.id) + '<p class="eyebrow">ضعف اصلی تو</p></div><h1>' + esc(top.title) + '</h1><p class="detail">' + esc(top.detail) + '</p>';
+    c += '<div class="meter"><div class="track"><div class="fill" style="width:' + Math.round(top.share * 100) + '%"></div></div><span>' + fa(top.count) + ' از ' + fa(top.of) + (top.id === 'opening' ? ' بازی' : top.id === 'convert' ? ' بازیِ نبرده' : ' باخت') + '</span></div>';
+    c += '<div class="tip">' + ICON.bulb + '<span>' + esc(top.tip) + '</span></div>';
+    c += '<div class="stack"><a class="btn primary" href="#train">تمرین روی اشتباه‌های خودت</a><button type="button" class="btn ghost" data-weak="' + top.id + '">دیدن این بازی‌ها</button></div>';
+    cards.push(['weak-main', 'ضعف اصلی', c]);
+
     var chrono = R.games.slice().reverse().slice(-60).map(function (g) { return g.res; });
-    var nW = t.W, nB = R.col.b.W + R.col.b.D + R.col.b.L, nWh = R.col.w.W + R.col.w.D + R.col.w.L;
-    h += '<div class="rings">';
-    h += '<div class="ring"><div class="rv">' + ringSVG(R.scoreW, scoreCol(R.scoreW)) + '<div class="in"><small>با سفید</small><b>' + pct(R.scoreW) + '</b></div></div><span class="cap">' + fa(nWh) + ' بازی</span></div>';
-    h += '<div class="ring"><div class="rv">' + tickSVG(chrono) + '<div class="in"><small>امتیاز کل</small><b>' + pct(R.score) + '</b></div></div><span class="cap">هر خط یک بازی</span></div>';
-    h += '<div class="ring"><div class="rv">' + ringSVG(R.scoreB, scoreCol(R.scoreB)) + '<div class="in"><small>با سیاه</small><b>' + pct(R.scoreB) + '</b></div></div><span class="cap">' + fa(nB) + ' بازی</span></div>';
-    h += '</div>';
-    h += '<div class="legend" style="justify-content:center"><span><i class="dot" style="background:var(--win)"></i>' + fa(t.W) + ' برد</span><span><i class="dot" style="background:var(--draw)"></i>' + fa(t.D) + ' مساوی</span><span><i class="dot" style="background:var(--loss)"></i>' + fa(t.L) + ' باخت</span></div>';
-    h += '<div class="kv">';
-    if (last && last.myElo) h += '<div><span>ریتینگ آخرین بازی</span><span class="mono">' + esc(last.myElo) + '</span></div>';
-    h += '<div><span>بازی‌های بررسی‌شده</span><span>' + fa(n) + '</span></div></div></aside></section>';
+    var nB = R.col.b.W + R.col.b.D + R.col.b.L, nWh = R.col.w.W + R.col.w.D + R.col.w.L;
+    c = '<div class="ph"><h2>خلاصه</h2><p>' + fa(n) + ' بازی</p></div><div class="rings">';
+    c += '<div class="ring"><div class="rv">' + ringSVG(R.scoreW, scoreCol(R.scoreW)) + '<div class="in"><small>با سفید</small><b>' + pct(R.scoreW) + '</b></div></div><span class="cap">' + fa(nWh) + ' بازی</span></div>';
+    c += '<div class="ring"><div class="rv">' + tickSVG(chrono) + '<div class="in"><small>امتیاز کل</small><b>' + pct(R.score) + '</b></div></div><span class="cap">هر خط یک بازی</span></div>';
+    c += '<div class="ring"><div class="rv">' + ringSVG(R.scoreB, scoreCol(R.scoreB)) + '<div class="in"><small>با سیاه</small><b>' + pct(R.scoreB) + '</b></div></div><span class="cap">' + fa(nB) + ' بازی</span></div></div>';
+    c += '<div class="legend" style="justify-content:center"><span><i class="dot" style="background:var(--win)"></i>' + fa(t.W) + ' برد</span><span><i class="dot" style="background:var(--draw)"></i>' + fa(t.D) + ' مساوی</span><span><i class="dot" style="background:var(--loss)"></i>' + fa(t.L) + ' باخت</span></div>';
+    var last = R.games[0];
+    c += '<div class="kv">' + (last && last.myElo ? '<div><span>ریتینگ آخرین بازی</span><span class="mono">' + esc(last.myElo) + '</span></div>' : '') + '<div><span>اشتباه‌های مهره‌ای</span><span>' + fa(R.phase.opening + R.phase.middlegame + R.phase.endgame) + '</span></div></div>';
+    cards.push(['', 'خلاصه', c]);
 
     if (w.length > 1) {
-      h += '<section><div class="sec-h"><h2>الگوهای دیگر</h2><p>به ترتیب تعداد بازی‌هایی که درگیرشان بود</p></div><div class="card wlist" style="padding-top:18px;padding-bottom:4px">';
+      c = '<div class="ph"><h2>الگوهای دیگر</h2><p>بزن تا بازی‌ها را ببینی</p></div><div>';
       w.slice(1).forEach(function (x) {
-        h += '<div class="wrow">' + wtile(x.id, true) + '<div><h3>' + esc(x.title) + '</h3><p>' + esc(x.detail) + '</p></div>';
-        h += '<div class="sev"><div class="track"><div class="fill" style="width:' + Math.round(x.share * 100) + '%"></div></div><span>' + fa(x.count) + ' از ' + fa(x.of) + '</span></div>';
-        h += '<button type="button" class="linkbtn" data-weak="' + x.id + '">بازی‌ها</button></div>';
+        c += '<button type="button" class="prow" data-weak="' + x.id + '">' + wtile(x.id, true) + '<span class="pt"><h3>' + esc(x.title) + '</h3><p>' + esc(x.detail) + '</p><span class="pbar"><span class="track"><span class="fill" style="display:block;width:' + Math.round(x.share * 100) + '%"></span></span><span>' + fa(x.count) + ' از ' + fa(x.of) + '</span></span></span></button>';
       });
-      h += '</div></section>';
+      cards.push(['', 'الگوها', c + '</div>']);
     }
 
-    h += '<section class="grid2">';
-    h += '<div class="card"><div class="sec-h"><h2>گشایش‌ها</h2><p>امتیاز تو در هر گشایش</p></div><div style="overflow-x:auto"><table><thead><tr><th>گشایش</th><th class="num">بازی</th><th class="num">امتیاز</th></tr></thead><tbody>';
-    R.openings.slice(0, 8).forEach(function (o) {
-      var c = o.score >= 0.55 ? 'var(--win)' : o.score < 0.4 ? 'var(--loss)' : '#C4CCDC';
-      h += '<tr><td><div class="op-name"><span dir="ltr" style="text-align:right">' + esc(o.name) + '</span><small>با ' + (o.color === 'w' ? 'سفید' : 'سیاه') + ' · ' + fa(o.W) + ' برد، ' + fa(o.L) + ' باخت</small></div></td><td class="num">' + fa(o.n) + '</td><td class="num"><div class="scorebar"><span>' + pct(o.score) + '</span><div class="track"><div class="fill" style="width:' + Math.round(o.score * 100) + '%;background:' + c + '"></div></div></div></td></tr>';
+    c = '<div class="ph"><h2>گشایش‌ها</h2><p>امتیاز تو در هر گشایش</p></div><div>';
+    R.openings.slice(0, 5).forEach(function (o) {
+      var col = o.score >= 0.55 ? 'var(--win)' : o.score < 0.4 ? 'var(--loss)' : '#C4CCDC';
+      c += '<div class="orow"><div class="on"><b>' + esc(o.name) + '</b><small>با ' + (o.color === 'w' ? 'سفید' : 'سیاه') + ' · ' + fa(o.n) + ' بازی</small></div><div class="os"><span>' + pct(o.score) + '</span><div class="track"><div class="fill" style="width:' + Math.round(o.score * 100) + '%;background:' + col + '"></div></div></div></div>';
     });
-    h += '</tbody></table></div></div>';
+    cards.push(['', 'گشایش‌ها', c + '</div>']);
 
-    h += '<div class="card"><div class="sec-h"><h2>مدیریت زمان</h2><p>درصد وقت باقی‌مانده در هر حرکت</p></div>';
-    h += R.clockCurve ? clockChart(R.clockCurve) : '<p class="fine">فایل این بازی‌ها زمان حرکت‌ها را ندارد.</p>';
     var ph = R.phase, totB = ph.opening + ph.middlegame + ph.endgame;
-    h += '<div class="phases">';
+    c = '<div class="ph"><h2>مدیریت زمان</h2><p>وقت باقی‌مانده در هر حرکت</p></div>';
+    c += R.clockCurve ? clockChart(R.clockCurve) : '<p class="fine">این بازی‌ها زمان حرکت‌ها را ندارند.</p>';
+    c += '<div class="phases">';
     ['opening', 'middlegame', 'endgame'].forEach(function (k) {
-      h += '<div class="phase"><span>اشتباه در ' + PHASE[k] + '</span><b>' + fa(ph[k]) + '</b><span>' + (totB ? pct(ph[k] / totB) : '–') + '</span></div>';
+      c += '<div class="phase"><span>اشتباه در ' + PHASE[k] + '</span><b>' + fa(ph[k]) + '</b><span>' + (totB ? pct(ph[k] / totB) : '–') + '</span></div>';
     });
-    h += '</div></div></section>';
-    h += '<p class="fine">تحلیل فعلی بر اساس شمارش مهره‌ها و زمان است. «اشتباه» یعنی حرکتی که بعدش حداقل ۲ امتیاز مهره از دست رفت و جبران نشد.</p>';
-    return h;
+    c += '</div><p class="fine">«اشتباه» یعنی حرکتی که بعدش حداقل ۲ امتیاز مهره از دست رفت و جبران نشد.</p>';
+    cards.push(['', 'زمان', c]);
+    return cards;
+  }
+
+  function viewReport() {
+    var cards = reportCards();
+    if (S.page >= cards.length) S.page = 0;
+    var h = '<div class="view">' + head('گزارش', userChip()) + '<div class="pager" id="pager">';
+    cards.forEach(function (c, i) { h += '<section class="card pcard ' + c[0] + '" aria-label="' + c[1] + '">' + c[2] + '</section>'; });
+    h += '</div><div class="dots" id="dots">';
+    cards.forEach(function (c, i) { h += '<button type="button" data-page="' + i + '" aria-label="' + c[1] + '" aria-current="' + (i === S.page) + '"><i></i></button>'; });
+    return h + '</div></div>';
   }
 
   function clockChart(cc) {
-    var W = 600, H = 230, L = 40, Rr = 12, T = 14, B = 30, n = 40;
+    var W = 600, H = 210, L = 40, Rr = 12, T = 14, B = 30, n = 40;
     function x(m) { return L + (W - L - Rr) * m / (n - 1); }
     function y(v) { return T + (H - T - B) * (1 - v); }
     function path(arr) {
@@ -196,14 +200,11 @@
       s += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="#26344F"/>';
       s += '<text x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + fa(v * 100) + '٪</text>';
     });
-    [1, 10, 20, 30, 40].forEach(function (m) {
-      s += '<text x="' + x(m - 1) + '" y="' + (H - 8) + '" text-anchor="middle">' + fa(m) + '</text>';
-    });
-    s += '<path d="' + path(cc.win) + '" fill="none" stroke="#4CD4A8" stroke-width="2.2" stroke-linejoin="round"/>';
-    s += '<path d="' + path(cc.loss) + '" fill="none" stroke="#F05A6E" stroke-width="2.2" stroke-linejoin="round"/>';
-    s += lastPt(cc.win, '#4CD4A8') + lastPt(cc.loss, '#F05A6E');
-    s += '</svg>';
-    s += '<div class="legend" style="margin-top:8px"><span><i class="dot" style="background:var(--win)"></i>بردها</span><span><i class="dot" style="background:var(--loss)"></i>باخت‌ها</span><span>محور افقی: شماره‌ی حرکت</span></div>';
+    [1, 10, 20, 30, 40].forEach(function (m) { s += '<text x="' + x(m - 1) + '" y="' + (H - 8) + '" text-anchor="middle">' + fa(m) + '</text>'; });
+    s += '<path d="' + path(cc.win) + '" fill="none" stroke="#4CD4A8" stroke-width="2.4" stroke-linejoin="round"/>';
+    s += '<path d="' + path(cc.loss) + '" fill="none" stroke="#F05A6E" stroke-width="2.4" stroke-linejoin="round"/>';
+    s += lastPt(cc.win, '#4CD4A8') + lastPt(cc.loss, '#F05A6E') + '</svg>';
+    s += '<div class="legend"><span><i class="dot" style="background:var(--win)"></i>بردها</span><span><i class="dot" style="background:var(--loss)"></i>باخت‌ها</span><span>محور افقی: شماره‌ی حرکت</span></div>';
     return s;
   }
 
@@ -222,7 +223,7 @@
   function viewGames() {
     var R = S.rep, list = filteredGames();
     if (S.gid == null || !list.some(function (x) { return x.id === S.gid; })) { S.gid = list.length ? list[0].id : null; S.ply = -2; }
-    var h = '<div class="gwrap"><section aria-label="فهرست بازی‌ها"><div class="filters">';
+    var h = '<div class="gwrap' + (S.gview ? ' open' : '') + '"><section class="glistp" aria-label="فهرست بازی‌ها">' + head('بازی‌ها', '<span class="fine">' + fa(list.length) + ' بازی</span>') + '<div class="filters">';
     if (S.weakFilter) {
       var w = R.weaknesses.filter(function (x) { return x.id === S.weakFilter; })[0];
       h += '<button type="button" class="chip" aria-pressed="true" data-clearweak="1">' + esc(w ? w.title : '') + ' ×</button>';
@@ -230,120 +231,104 @@
     [['all', 'همه'], ['L', 'باخت‌ها'], ['W', 'بردها'], ['blun', 'با اشتباه']].forEach(function (f) {
       h += '<button type="button" class="chip" data-filter="' + f[0] + '" aria-pressed="' + (!S.weakFilter && S.filter === f[0]) + '">' + f[1] + '</button>';
     });
-    h += '</div><div class="glist">';
-    if (!list.length) h += '<p class="empty">بازی‌ای با این فیلتر نیست.</p>';
+    h += '</div><div class="glist" id="glist">';
+    if (!list.length) h += '<p class="fine" style="text-align:center;padding:30px">بازی‌ای با این فیلتر نیست.</p>';
     list.forEach(function (x) {
       h += '<button type="button" class="gitem" data-gid="' + x.id + '" aria-current="' + (x.id === S.gid) + '"><span class="tile sm ' + RTONE[x.res] + '">' + ROOK + '</span>';
       h += '<span class="who"><b dir="auto">' + esc(x.opp) + (x.oppElo ? ' <span class="mono" style="color:var(--muted);font-size:12px">' + esc(x.oppElo) + '</span>' : '') + '</b><small>' + faDate(x.date) + ' | با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' | <span dir="ltr">' + esc(x.opening) + '</span></small></span>';
       h += '<span class="meta"><span class="gres ' + x.res + '">' + RES[x.res] + '</span>' + (x.blunders.length ? '<span class="flag">' + fa(x.blunders.length) + ' اشتباه</span>' : '<span>' + fa(x.moves) + ' حرکت</span>') + '</span></button>';
     });
-    h += '</div></section><section aria-label="مرور بازی">' + viewer() + '</section></div>';
+    h += '</div></section><section class="gview" aria-label="مرور بازی">' + viewer() + '</section></div>';
     return h;
   }
 
   function viewer() {
     var x = S.rep.games.filter(function (g) { return g.id === S.gid; })[0];
-    if (!x) return '<div class="card empty">یک بازی انتخاب کن.</div>';
+    if (!x) return '<div class="card fine" style="text-align:center">یک بازی انتخاب کن.</div>';
     var plies = x.g.plies;
     if (S.ply === -2) S.ply = x.blunders.length ? x.blunders[0].ply : plies.length - 1;
     var cur = S.ply, s = cur < 0 ? x.g.start : plies[cur].after;
     var bl = x.blunders.filter(function (b) { return b.ply === cur; })[0];
     var hl = cur >= 0 ? [plies[cur].from, plies[cur].to] : [];
-    var h = '<div class="viewer"><div class="vhead"><div><h2><span class="pill ' + x.res + '" style="vertical-align:middle;margin-inline-end:8px">' + RES[x.res] + '</span>در برابر <bdi>' + esc(x.opp) + '</bdi></h2>';
-    h += '<p>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · <bdi>' + esc(x.opening) + '</bdi> · ' + (TERM[x.term] ? (x.res === 'D' ? 'مساوی' : RES[x.res] + ' ' + TERM[x.term]) : '') + ' · ' + faDate(x.date) + '</p></div></div>';
-    h += '<div class="vboard" tabindex="0" id="vboard" aria-label="صفحه‌ی بازی؛ با کلیدهای جهت حرکت کن">' + boardHTML(s, { flip: x.me === 'b', hl: hl, bad: !!bl });
+    var term = x.res === 'D' ? 'مساوی' : RES[x.res] + (TERM[x.term] ? ' ' + TERM[x.term] : '');
+    var h = '<div class="vtop"><button type="button" class="iconbtn back" data-back="1" aria-label="برگشت به فهرست">' + ICON.next + '</button>';
+    h += '<div class="vt"><b><span class="pill ' + x.res + '">' + RES[x.res] + '</span><bdi>' + esc(x.opp) + '</bdi></b><small>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · ' + term + ' · ' + faDate(x.date) + ' · <bdi>' + esc(x.opening) + '</bdi></small></div></div>';
+    h += '<div class="bwrap" id="vboard" tabindex="0" aria-label="صفحه‌ی بازی؛ با کلیدهای جهت حرکت کن">' + boardHTML(s, { flip: x.me === 'b', hl: hl, bad: !!bl }) + '</div>';
     h += '<div class="ctrls"><button type="button" data-nav="first" aria-label="شروع بازی">' + ICON.first + '</button><button type="button" data-nav="prev" aria-label="حرکت قبل">' + ICON.prev + '</button><button type="button" data-nav="next" aria-label="حرکت بعد">' + ICON.next + '</button><button type="button" data-nav="last" aria-label="آخر بازی">' + ICON.last + '</button></div>';
-    h += '<div><div class="matlabel"><span>تعادل مهره‌ها از دید تو</span><span class="mono">' + (cur >= 0 ? (x.mat[cur] > 0 ? '+' : '') + x.mat[cur] : '0') + '</span></div>' + matChart(x, cur) + '</div></div>';
-    h += '<div class="side">';
-    if (bl) {
-      h += '<div class="note bad"><b>اشتباه در حرکت ' + fa(Math.floor(bl.ply / 2) + 1) + ': <span class="mono">' + esc(bl.san) + '</span></b><span>بعد از این حرکت ' + fa(bl.loss) + ' امتیاز مهره از دست رفت و برنگشت' + (bl.clk != null ? '، وقتی ' + fa(Math.round(bl.clk)) + ' ثانیه وقت داشتی' : '') + '.</span>';
-      h += '<button type="button" class="linkbtn" style="align-self:flex-start" data-trainfrom="' + x.id + ':' + bl.ply + '">همین موقعیت را تمرین کن</button></div>';
-    } else if (x.blunders.length) {
-      h += '<div class="note"><b>' + fa(x.blunders.length) + ' اشتباه در این بازی</b><span>حرکت‌های قرمز را در فهرست ببین.</span></div>';
-    } else {
-      h += '<div class="note"><b>اشتباه بزرگی پیدا نشد</b><span>در این بازی مهره‌ای بی‌جبران از دست نرفت.</span></div>';
-    }
-    h += '<div class="moves" id="moves">';
-    for (var i = 0; i < plies.length; i += 2) {
-      h += '<div class="mrow"><span>' + (Math.floor(i / 2) + 1) + '.</span>';
-      for (var j = i; j < i + 2; j++) {
-        if (j >= plies.length) { h += '<span></span>'; continue; }
-        var isB = x.blunders.some(function (b) { return b.ply === j; });
-        h += '<button type="button" data-ply="' + j + '" class="' + (j === cur ? 'cur ' : '') + (isB ? 'blun' : '') + '">' + esc(plies[j].san) + '</button>';
-      }
-      h += '</div>';
-    }
-    h += '</div></div></div>';
+    h += '<div class="matc">' + matChart(x, cur) + '</div>';
+    h += '<div class="mstrip" id="mstrip">';
+    plies.forEach(function (p, j) {
+      var isB = x.blunders.some(function (b) { return b.ply === j; });
+      h += '<button type="button" data-ply="' + j + '" class="' + (j === cur ? 'cur ' : '') + (isB ? 'blun' : '') + '">' + (j % 2 === 0 ? '<small>' + (j / 2 + 1) + '.</small>' : '') + esc(p.san) + '</button>';
+    });
+    h += '</div>';
+    if (bl) h += '<div class="note bad"><span><b>اشتباه: <span class="mono">' + esc(bl.san) + '</span></b> · ' + fa(bl.loss) + ' امتیاز مهره از دست رفت' + (bl.clk != null ? '، با ' + fa(Math.round(bl.clk)) + ' ثانیه وقت' : '') + '</span><button type="button" class="linkbtn" data-trainfrom="' + x.id + ':' + bl.ply + '">تمرین</button></div>';
+    else if (x.blunders.length) h += '<div class="note"><span><b>' + fa(x.blunders.length) + ' اشتباه در این بازی.</b> حرکت‌های قرمز را بزن.</span><button type="button" class="linkbtn" data-ply="' + x.blunders[0].ply + '">اولین اشتباه</button></div>';
+    else h += '<div class="note"><span><b>اشتباه بزرگی پیدا نشد.</b> مهره‌ای بی‌جبران از دست نرفت.</span></div>';
     return h;
   }
 
   function matChart(x, cur) {
-    var W = 600, H = 90, n = x.mat.length, mx = 5;
+    var W = 600, H = 60, n = x.mat.length, mx = 5;
     x.mat.forEach(function (v) { mx = Math.max(mx, Math.abs(v)); });
     function px(i) { return n > 1 ? i / (n - 1) * W : 0; }
-    function py(v) { return H / 2 - v / mx * (H / 2 - 6); }
+    function py(v) { return H / 2 - v / mx * (H / 2 - 4); }
     var d = 'M0 ' + py(0);
     x.mat.forEach(function (v, i) { d += 'L' + px(i).toFixed(1) + ' ' + py(v).toFixed(1); });
     var area = d + 'L' + W + ' ' + py(0) + 'Z';
-    var s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:70px" role="img" aria-label="نمودار تعادل مهره‌ها در طول بازی">';
+    var s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:36px" role="img" aria-label="تعادل مهره‌ها در طول بازی">';
     s += '<defs><clipPath id="up"><rect x="0" y="0" width="' + W + '" height="' + py(0) + '"/></clipPath><clipPath id="dn"><rect x="0" y="' + py(0) + '" width="' + W + '" height="' + H + '"/></clipPath></defs>';
     s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="8" fill="#1C2A42"/>';
-    s += '<path d="' + area + '" fill="rgba(76,212,168,.25)" clip-path="url(#up)"/><path d="' + area + '" fill="rgba(240,90,110,.25)" clip-path="url(#dn)"/>';
-    s += '<line x1="0" x2="' + W + '" y1="' + py(0) + '" y2="' + py(0) + '" stroke="#34456A" stroke-dasharray="3 4"/>';
-    x.blunders.forEach(function (b) { s += '<circle cx="' + px(b.ply).toFixed(1) + '" cy="' + py(x.mat[b.ply]).toFixed(1) + '" r="3.5" fill="#F05A6E"/>'; });
-    if (cur >= 0) s += '<line x1="' + px(cur).toFixed(1) + '" x2="' + px(cur).toFixed(1) + '" y1="0" y2="' + H + '" stroke="#B9A6FF" stroke-width="2"/>';
-    s += '</svg>';
-    return s;
+    s += '<path d="' + area + '" fill="rgba(76,212,168,.3)" clip-path="url(#up)"/><path d="' + area + '" fill="rgba(240,90,110,.3)" clip-path="url(#dn)"/>';
+    if (cur >= 0) s += '<line x1="' + px(cur).toFixed(1) + '" x2="' + px(cur).toFixed(1) + '" y1="0" y2="' + H + '" stroke="#B9A6FF" stroke-width="3"/>';
+    return s + '</svg>';
   }
 
-  function trainItems() { return S.rep.train; }
-
   function viewTrain() {
-    var items = trainItems();
-    if (!items.length) return banner() + '<div class="card empty">در این بازی‌ها اشتباه مهره‌ای پیدا نشد که تمرین بسازد.</div>';
+    var items = S.rep.train;
+    if (!items.length) return '<div class="view tview">' + head('تمرین') + '<div class="card fine" style="text-align:center">در این بازی‌ها اشتباه مهره‌ای پیدا نشد که تمرین بسازد.</div></div>';
     if (S.ti >= items.length) S.ti = 0;
-    var it = items[S.ti], pos = S.tdone && S.tdone.after ? S.tdone.after : it.pos;
-    var me = it.game.me;
+    var it = items[S.ti], pos = S.tdone && S.tdone.after ? S.tdone.after : it.pos, me = it.game.me;
     var tg = [];
     if (S.tsel != null && !S.tdone) tg = Chess.legal(it.pos).filter(function (m) { return m.from === S.tsel; }).map(function (m) { return m.to; });
     var hl = S.tdone && S.tdone.m ? [S.tdone.m.from, S.tdone.m.to] : (S.tfb && S.tfb.m ? [S.tfb.m.from, S.tfb.m.to] : []);
-    var h = banner() + '<div class="twrap"><div>' + boardHTML(pos, { flip: me === 'b', click: !S.tdone, sel: S.tsel, tgts: tg, hl: hl, bad: S.tfb && S.tfb.kind === 'no' }) + '</div>';
-    h += '<div class="tpanel"><div class="tprog"><span>موقعیت ' + fa(S.ti + 1) + ' از ' + fa(items.length) + '</span><div class="track"><div class="fill" style="width:' + ((S.ti + 1) / items.length * 100) + '%"></div></div></div>';
-    h += '<p class="eyebrow">از بازی خودت در برابر <bdi>' + esc(it.game.opp) + '</bdi> · ' + faDate(it.game.date) + ' · ' + PHASE[it.b.phase] + '</p>';
-    h += '<h1>نوبت ' + (me === 'w' ? 'سفید' : 'سیاه') + '. حرکت امن‌تری پیدا کن.</h1>';
-    h += '<p style="color:#C4CCDC">در بازی اصلی <span class="mono">' + esc(it.played.san) + '</span> زدی و ' + fa(it.b.loss) + ' امتیاز مهره از دست رفت. مهره‌ای را انتخاب کن و حرکتش بده.</p>';
+    var h = '<div class="view tview">' + head('تمرین', '<span class="fine">' + fa(S.ti + 1) + ' از ' + fa(items.length) + '</span>');
+    h += '<div class="tprog"><div class="track"><div class="fill" style="width:' + ((S.ti + 1) / items.length * 100) + '%"></div></div></div>';
+    h += '<p class="tq">نوبت ' + (me === 'w' ? 'سفید' : 'سیاه') + '. در بازی با <bdi>' + esc(it.game.opp) + '</bdi> این‌جا <span class="mono">' + esc(it.played.san) + '</span> زدی و ' + fa(it.b.loss) + ' امتیاز مهره از دست رفت. حرکت امن‌تری پیدا کن.</p>';
+    h += '<div class="bwrap">' + boardHTML(pos, { flip: me === 'b', click: !S.tdone, sel: S.tsel, tgts: tg, hl: hl, bad: S.tfb && S.tfb.kind === 'no' }) + '</div>';
     var fb = S.tfb;
     if (fb) h += '<div class="fb ' + (fb.kind === 'ok' ? 'ok' : fb.kind === 'no' ? 'no' : '') + '" role="status">' + (fb.kind === 'ok' ? ICON.ok : fb.kind === 'no' ? ICON.no : ICON.think) + '<span>' + fb.text + '</span></div>';
-    else h += '<div class="fb" role="status"><span style="color:var(--muted)">روی یک مهره‌ی ' + (me === 'w' ? 'سفید' : 'سیاه') + ' بزن.</span></div>';
-    h += '<div class="actions"><button type="button" class="btn" data-t="prev"' + (S.ti === 0 ? ' disabled' : '') + '>قبلی</button><button type="button" class="btn" data-t="reveal">نمایش جواب</button><button type="button" class="btn primary" data-t="next">موقعیت بعدی</button></div>';
-    h += '<p class="fine">بررسی حرکت با محاسبه‌ی مهره‌ها تا سه نیم‌حرکت انجام می‌شود، هنوز با موتور کامل نه. حرکت‌هایی که مهره را حفظ می‌کنند درست حساب می‌شوند.</p></div></div>';
+    else h += '<div class="fb" role="status"><span style="color:var(--muted)">روی یک مهره‌ی ' + (me === 'w' ? 'سفید' : 'سیاه') + ' بزن، بعد روی خانه‌ی مقصد.</span></div>';
+    h += '<div class="tact"><button type="button" class="btn" data-t="prev"' + (S.ti === 0 ? ' disabled' : '') + '>قبلی</button><button type="button" class="btn" data-t="reveal">جواب</button><button type="button" class="btn primary" data-t="next">بعدی</button></div></div>';
     return h;
   }
 
   function viewImport() {
-    var u = S.user || '';
     var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1;
     var pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
     function two(n) { return n < 10 ? '0' + n : '' + n; }
-    var h = '<section class="import"><div class="card"><h2>دریافت خودکار</h2><p class="fine">نام کاربری‌ات را بنویس و دکمه را بزن.</p>';
-    h += '<div style="display:flex;flex-direction:column;gap:14px;margin-top:16px">' + autoBlock() + '</div>';
-    h += '<p class="fine" style="margin-top:18px">یا دستی: فایل را از این لینک‌ها بگیر و در کادر کناری بگذار.</p>';
-    h += '<ol class="steps"><li><span>یکی از لینک‌های زیر را باز کن. مرورگر فایل را دانلود می‌کند.</span></li><li><span>فایل را در کادر کناری رها کن یا انتخابش کن.</span></li><li><span>گزارش با بازی‌های خودت ساخته می‌شود و در همین مرورگر می‌ماند.</span></li></ol>';
-    h += '<div class="dl" id="dl">' + dlLinks(u, y, m, py, pm, two) + '</div></div>';
-    h += '<div class="card" style="display:flex;flex-direction:column;gap:16px"><h2>ورود دستی فایل PGN</h2>';
-    h += '<label class="drop" id="drop" for="file">' + ICON.upload + '<span><b style="color:var(--text)">فایل PGN را این‌جا رها کن</b><br>یا بزن تا انتخابش کنی</span><input id="file" type="file" accept=".pgn,.txt,application/x-chess-pgn,text/plain" multiple class="sr"></label>';
-    h += '<div class="field"><label for="paste">یا متن PGN را بچسبان</label><textarea id="paste" placeholder="[Event &quot;Live Chess&quot;] ..."></textarea></div>';
-    h += '<div class="actions"><button type="button" class="btn primary" id="go">تحلیل کن</button>' + (S.rep ? '<button type="button" class="btn ghost" id="reset">پاک کردن بازی‌ها</button>' : '') + '</div>';
-    if (S.importMsg) h += '<p class="' + (S.importMsg.err ? 'err' : 'ok-msg') + '" role="status">' + esc(S.importMsg.text) + '</p>';
-    h += '</div></section>';
-    return h;
+    var h = '<div class="view iwrap">' + head('ورود بازی‌ها', S.rep ? userChip() : '');
+    h += '<div class="seg" role="group" aria-label="روش ورود"><button type="button" data-imode="auto" aria-pressed="' + (S.imode !== 'file') + '">خودکار</button><button type="button" data-imode="file" aria-pressed="' + (S.imode === 'file') + '">فایل PGN</button></div>';
+    h += '<div class="card icard">';
+    if (S.imode !== 'file') {
+      h += '<p style="color:#C4CCDC">نام کاربری‌ات را بنویس. بازی‌های دو ماه اخیر خوانده می‌شود.</p>' + autoBlock();
+      if (S.rep) h += '<button type="button" class="btn ghost" id="reset" style="margin-top:auto">پاک کردن بازی‌ها از این مرورگر</button>';
+    } else {
+      h += '<label class="drop" id="drop" for="file">' + ICON.upload + '<span><b style="color:var(--text)">فایل PGN را انتخاب کن</b><br>یا این‌جا رها کن</span><input id="file" type="file" accept=".pgn,.txt,application/x-chess-pgn,text/plain" multiple class="sr"></label>';
+      h += '<div class="field"><label for="paste">یا متن PGN را بچسبان</label><textarea id="paste" placeholder="[Event &quot;Live Chess&quot;] ..."></textarea></div>';
+      h += '<button type="button" class="btn primary" id="go">تحلیل کن</button>';
+      h += '<div class="dl" id="dl">' + dlLinks(S.user || '', y, m, py, pm, two) + '</div>';
+      if (S.importMsg) h += '<p class="' + (S.importMsg.err ? 'err' : 'fine') + '" role="status">' + esc(S.importMsg.text) + '</p>';
+    }
+    return h + '</div></div>';
   }
 
   function dlLinks(u, y, m, py, pm, two) {
-    if (!u) return '<p class="fine">نام کاربری‌ات را بنویس تا لینک‌ها ساخته شوند.</p>';
+    if (!u) return '<p class="fine">فایل PGN را از بخش آرشیو Chess.com یا Lichess دانلود کن.</p>';
     var e = encodeURIComponent(u.trim());
-    return '<a href="https://api.chess.com/pub/player/' + e.toLowerCase() + '/games/' + y + '/' + two(m) + '/pgn" target="_blank" rel="noopener">Chess.com: بازی‌های این ماه</a>' +
-      '<a href="https://api.chess.com/pub/player/' + e.toLowerCase() + '/games/' + py + '/' + two(pm) + '/pgn" target="_blank" rel="noopener">Chess.com: بازی‌های ماه قبل</a>' +
+    return '<p class="fine">دانلود فایل برای <span class="mono">' + esc(u) + '</span>:</p>' +
+      '<a href="https://api.chess.com/pub/player/' + e.toLowerCase() + '/games/' + y + '/' + two(m) + '/pgn" target="_blank" rel="noopener">Chess.com: این ماه</a>' +
+      '<a href="https://api.chess.com/pub/player/' + e.toLowerCase() + '/games/' + py + '/' + two(pm) + '/pgn" target="_blank" rel="noopener">Chess.com: ماه قبل</a>' +
       '<a href="https://lichess.org/api/games/user/' + e + '?max=100&amp;clocks=true&amp;opening=true" target="_blank" rel="noopener">Lichess: ۱۰۰ بازی آخر</a>';
   }
 
@@ -352,32 +337,46 @@
     var v = S.view;
     document.querySelectorAll('.nav a').forEach(function (a) { if (a.dataset.view === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     document.body.classList.toggle('noreport', !S.rep);
+    var gl = document.getElementById('glist'), keep = gl ? gl.scrollTop : null;
     var html = v === 'import' ? viewImport() : !S.rep ? viewWelcome() : v === 'games' ? viewGames() : v === 'train' ? viewTrain() : viewReport();
     app.innerHTML = html;
     bindAuto();
-    if (v === 'games') {
-      var c = app.querySelector('.mrow button.cur'), box = document.getElementById('moves');
-      if (c && box) box.scrollTop = c.offsetTop - box.clientHeight / 2;
-    }
     if (v === 'import') bindImport();
-    if (!S.rep && v !== 'import') { var un = document.getElementById('uname'); if (un && !un.value) un.focus({ preventScroll: true }); }
+    var gl2 = document.getElementById('glist');
+    if (gl2 && keep != null) gl2.scrollTop = keep;
+    var ms = document.getElementById('mstrip'), c = ms && ms.querySelector('.cur');
+    if (ms && c) ms.scrollLeft = c.offsetLeft - ms.clientWidth / 2 + c.offsetWidth / 2;
+    var pg = document.getElementById('pager');
+    if (pg) {
+      var w = pg.firstElementChild ? pg.firstElementChild.getBoundingClientRect().width + 14 : 1;
+      pg.scrollLeft = (getComputedStyle(pg).direction === 'rtl' ? -1 : 1) * S.page * w;
+      pg.addEventListener('scroll', function () {
+        var i = Math.round(Math.abs(pg.scrollLeft) / w);
+        if (i !== S.page) {
+          S.page = i;
+          document.querySelectorAll('#dots button').forEach(function (b) { b.setAttribute('aria-current', +b.dataset.page === i ? 'true' : 'false'); });
+        }
+      }, { passive: true });
+    }
   }
 
   function route() {
     var hsh = (location.hash || '').replace('#', '');
     S.view = ['report', 'games', 'train', 'import'].indexOf(hsh) >= 0 ? hsh : 'report';
     render();
-    window.scrollTo(0, 0);
   }
 
   // ---------- events ----------
   app.addEventListener('click', function (e) {
-    var t = e.target.closest('button, [data-weak]');
+    var t = e.target.closest('button');
     if (!t) return;
-    if (t.dataset.weak) { S.weakFilter = t.dataset.weak; S.gid = null; go('games'); return; }
-    if (t.dataset.clearweak) { S.weakFilter = null; S.filter = 'all'; render(); return; }
-    if (t.dataset.filter) { S.weakFilter = null; S.filter = t.dataset.filter; render(); return; }
-    if (t.dataset.gid) { S.gid = +t.dataset.gid; S.ply = -2; render(); return; }
+    if (t.dataset.weak) { S.weakFilter = t.dataset.weak; S.gid = null; S.gview = false; go('games'); return; }
+    if (t.dataset.clearweak) { S.weakFilter = null; S.filter = 'all'; S.gid = null; render(); return; }
+    if (t.dataset.filter) { S.weakFilter = null; S.filter = t.dataset.filter; S.gid = null; render(); var g = document.getElementById('glist'); if (g) g.scrollTop = 0; return; }
+    if (t.dataset.gid) { S.gid = +t.dataset.gid; S.ply = -2; S.gview = true; render(); return; }
+    if (t.dataset.back) { S.gview = false; render(); return; }
+    if (t.dataset.page) { var pg = document.getElementById('pager'), w = pg.firstElementChild.getBoundingClientRect().width + 14; pg.scrollTo({ left: (getComputedStyle(pg).direction === 'rtl' ? -1 : 1) * (+t.dataset.page) * w, behavior: 'smooth' }); return; }
+    if (t.dataset.imode) { S.imode = t.dataset.imode; S.importMsg = null; render(); return; }
     if (t.dataset.ply) { S.ply = +t.dataset.ply; render(); focusBoard(); return; }
     if (t.dataset.nav) { navPly(t.dataset.nav); return; }
     if (t.dataset.trainfrom) {
@@ -475,25 +474,20 @@
 
   // ---------- import ----------
   function bindImport() {
-    var un = document.getElementById('uname'), dl = document.getElementById('dl');
-    var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1;
-    var pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
-    function two(n) { return n < 10 ? '0' + n : '' + n; }
-    un.addEventListener('input', function () { dl.innerHTML = dlLinks(un.value, y, m, py, pm, two); });
+    var rs = document.getElementById('reset');
+    if (rs) rs.addEventListener('click', function () { forget('shatranj.pgn'); S.rep = null; S.importMsg = null; go('report'); });
     var drop = document.getElementById('drop'), file = document.getElementById('file');
+    if (!drop) return;
     ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
     ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
     drop.addEventListener('drop', function (e) { readFiles(e.dataTransfer.files); });
     file.addEventListener('change', function () { readFiles(file.files); });
     document.getElementById('go').addEventListener('click', function () {
       var txt = document.getElementById('paste').value;
-      if (!txt.trim()) { S.importMsg = { err: true, text: 'اول یک فایل بگذار یا متن PGN را بچسبان.' }; render(); return; }
+      if (!txt.trim()) { S.importMsg = { err: true, text: 'اول یک فایل انتخاب کن یا متن PGN را بچسبان.' }; render(); return; }
       finish(txt);
     });
-    var rs = document.getElementById('reset');
-    if (rs) rs.addEventListener('click', function () { forget('shatranj.pgn'); S.rep = null; S.importMsg = null; go('report'); });
   }
-
 
   function autoFetch(src) {
     var u = (S.user || '').trim(), msg = document.getElementById('auto-msg');
@@ -553,7 +547,7 @@
       var u = (S.user || '').trim();
       var r = load(txt, u);
       if (r.error) { S.importMsg = { err: true, text: r.error }; render(); return; }
-      store('shatranj.pgn', txt); store('shatranj.user', u);
+      store('shatranj.pgn', txt); store('shatranj.user', u); S.page = 0; S.gview = false;
       S.importMsg = null;
       go('report');
     }, 20);
