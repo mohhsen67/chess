@@ -42,6 +42,7 @@
     opening: ['t-teal', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.5C10.3 5 7.8 4.5 4 4.5v13c3.8 0 6.3.5 8 2 1.7-1.5 4.2-2 8-2v-13c-3.8 0-6.3.5-8 2z"/><path d="M12 6.5v13"/></svg>']
   };
   var ROOK = '<svg viewBox="6 4.5 20 21" aria-hidden="true"><path d="M10 7h2.6v2.4h2.1V7h2.6v2.4h2.1V7H22v5l-2.4 2.2v6.3H22V24H10v-3.5h2.4v-6.3L10 12z" fill="currentColor"/></svg>';
+  var KNIGHT = '<svg viewBox="96 76 300 370" aria-hidden="true"><path d="M182 382 C 178 336, 196 304, 232 276 C 214 270, 196 266, 176 270 L 150 284 C 132 292, 112 280, 114 260 C 116 238, 136 214, 160 190 C 182 168, 196 146, 204 124 L 214 92 L 236 116 L 254 90 L 266 120 C 324 136, 362 196, 362 270 C 362 320, 352 364, 340 400 L 176 400 C 178 392, 180 388, 182 382 Z" fill="currentColor"/><path d="M160 398 H352 C362 398 368 404 368 414 V420 C368 428 362 432 354 432 H158 C150 432 144 428 144 420 V414 C144 404 150 398 160 398 Z" fill="currentColor"/></svg>';
   var RTONE = { W: 't-teal', L: 't-red', D: 't-gray' };
   function wtile(id, sm) { var w = WICON[id] || WICON.blunder; return '<span class="tile' + (sm ? ' sm' : '') + ' ' + w[0] + '">' + w[1] + '</span>'; }
 
@@ -587,7 +588,7 @@
     });
     return h + '</div>';
   }
-  function brandHead() { return '<div class="wm-head"><span class="tile t-purple">' + ROOK + '</span><p class="eyebrow" style="color:var(--accent)">شطرنج</p></div>'; }
+  function brandHead() { return '<div class="wm-head"><span class="tile t-purple">' + KNIGHT + '</span><p class="eyebrow" style="color:var(--accent)">شطرنج</p></div>'; }
 
   function viewAuth() {
     var up = S.amode === 'up';

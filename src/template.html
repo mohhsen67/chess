@@ -2,10 +2,18 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="darkreader-lock">
 <meta name="theme-color" content="#0F1827">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="شطرنج">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>شطرنج</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,6 +57,7 @@ p{margin:0}
 
 /* shell: header, one screen of content, nav */
 .top{flex:none;background:var(--surface);border-bottom:1px solid var(--line);z-index:20}
+.top{padding-top:env(safe-area-inset-top)}
 .top-in{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:20px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)}
 .brand svg{width:30px;height:30px}
@@ -294,7 +303,8 @@ button.uchip{cursor:pointer;font:inherit;font-size:13px}
   .nav a{flex-direction:column;gap:0;font-size:11px;min-height:52px;padding:4px 6px;flex:1;justify-content:center}
   .nav a[aria-current="page"]{background:transparent;color:var(--accent)}
   .nav a svg{width:22px;height:22px}
-  main{padding:14px 16px calc(72px + env(safe-area-inset-bottom))}
+  main{padding:calc(14px + env(safe-area-inset-top)) 16px calc(72px + env(safe-area-inset-bottom))}
+  .top{padding-top:0}
   .vh h1{font-size:22px}
   .card{padding:18px}
 }
@@ -312,7 +322,7 @@ button.uchip{cursor:pointer;font:inherit;font-size:13px}
 <header class="top">
   <div class="top-in">
     <a class="brand" href="#report" aria-label="شطرنج، صفحه‌ی گزارش">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="9" fill="#1A2042" stroke="#363E78"/><path d="M10 7h2.6v2.4h2.1V7h2.6v2.4h2.1V7H22v5l-2.4 2.2v6.3H22V24H10v-3.5h2.4v-6.3L10 12z" fill="#B9A6FF"/></svg>
+      <img src="icon.svg" alt="" width="30" height="30" style="border-radius:9px">
       <b>شطرنج</b>
     </a>
     <nav class="nav" aria-label="بخش‌ها">
