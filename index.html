@@ -1501,18 +1501,9 @@ var Analyze = (function () {
   }
 
   function viewLink() {
-    var p = S.profile, h = '<section class="welcome"><div class="card wcard">' + brandHead();
-    if (!p.pending_username || !p.verify_code) {
-      h += '<h1>وصل کردن Chess.com</h1>';
-      h += '<form id="linkf" class="form" novalidate>' + fld('cuser', 'نام کاربری Chess.com', 'dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false"');
-      h += '<button type="submit" class="btn primary">ادامه</button>' + msg('lmsg', S.lmsg) + '</form>';
-    } else {
-      h += '<h1>تأیید حساب</h1><p class="lead">این کد را در خانه‌ی Location پروفایل Chess.com بگذار و ذخیره کن.</p>';
-      h += '<div class="codebox"><span class="mono">' + esc(p.verify_code) + '</span><button type="button" class="btn" data-copy="' + esc(p.verify_code) + '">کپی</button></div>';
-      h += '<div class="row2"><a class="btn" href="https://www.chess.com/settings/profile" target="_blank" rel="noopener">Chess.com</a><button type="button" class="btn primary" data-act="link-check">بررسی کن</button></div>';
-      h += msg('lmsg', S.lmsg);
-      h += '<p class="fine"><span class="mono">' + esc(p.pending_username) + '</span> · <button type="button" class="linkbtn inline" data-act="link-reset">تغییر</button></p>';
-    }
+    var h = '<section class="welcome"><div class="card wcard">' + brandHead(true);
+    h += '<form id="linkf" class="form" novalidate>' + fld('cuser', 'نام کاربری Chess.com', 'dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false"');
+    h += '<button type="submit" class="btn primary">ادامه</button>' + msg('lmsg', S.lmsg) + '</form>';
     return h + '</div></section>';
   }
 
@@ -1573,13 +1564,6 @@ var Analyze = (function () {
     if (a === 'retry') { loadAccount(); return; }
     if (a === 'signout') { signOut(); return; }
     if (a === 'sync') { S.syncErr = null; syncLoop(0); render(); return; }
-    if (a === 'link-reset') { S.profile.pending_username = null; S.profile.verify_code = null; S.lmsg = ''; render(); return; }
-    if (a === 'link-check') {
-      S.lmsg = 'در حال بررسی پروفایل Chess.com…'; render();
-      rpc('confirm_link').then(function (u) { S.profile.chess_username = u; S.lmsg = ''; S.stage = 'ready'; S.user = u; S.sync = null; render(); loadProgress(); syncLoop(0); })
-        .catch(function (e) { S.lmsg = errText(e); render(); });
-      return;
-    }
     if (a === 'leave') {
       if (!S.club) return;
       rpc('leave_club', { cid: S.club.id }).then(function () { S.club = null; S.board = null; render(); }).catch(function (e) { S.cmsg = errText(e); render(); });
@@ -1601,8 +1585,8 @@ var Analyze = (function () {
     if (f.id === 'linkf') {
       var cu = val('cuser');
       if (!cu) return;
-      S.lmsg = 'در حال پیدا کردن حساب…'; render();
-      rpc('start_link', { u: cu }).then(function (code) { S.profile.pending_username = cu.toLowerCase(); S.profile.verify_code = code; S.lmsg = ''; render(); })
+      S.lmsg = 'در حال وصل کردن…'; render();
+      rpc('link_chess', { u: cu }).then(function (name) { S.profile.chess_username = name; S.lmsg = ''; S.stage = 'ready'; S.user = name; S.sync = null; render(); loadProgress(); syncLoop(0); })
         .catch(function (err) { S.lmsg = errText(err); render(); });
     }
     if (f.id === 'joinf' || f.id === 'newf') {

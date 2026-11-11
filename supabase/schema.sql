@@ -86,7 +86,7 @@ $$;
 
 -- ---------- row level security ----------
 -- Each person reads only their own profile, games and progress.
--- The linked Chess.com name can only change through confirm_link().
+-- The linked Chess.com name can only change through link_chess().
 
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles for select using (id = auth.uid());
@@ -144,37 +144,21 @@ begin
 end $$;
 revoke execute on function public.chesscom_get(text) from public, anon, authenticated;
 
--- Step 1 of linking: remember the name and hand out a code to put in the Chess.com profile.
-create or replace function public.start_link(u text) returns text
+-- Links a Chess.com player to the signed-in account. First come, first served:
+-- a name already linked to someone else is refused (an admin can fix it in the dashboard).
+create or replace function public.link_chess(u text) returns text
 language plpgsql security definer set search_path = public as $$
-declare code text;
 begin
   if auth.uid() is null then raise exception 'not signed in'; end if;
   u := lower(trim(u));
   if u !~ '^[a-z0-9_-]{3,25}$' then raise exception 'invalid username'; end if;
   if exists (select 1 from profiles where chess_username = u and id <> auth.uid()) then raise exception 'taken'; end if;
   if chesscom_get('https://api.chess.com/pub/player/' || u) is null then raise exception 'no such player'; end if;
-  code := 'shatranj-' || substr(md5(random()::text || clock_timestamp()::text), 1, 6);
-  update profiles set pending_username = u, verify_code = code where id = auth.uid();
-  return code;
+  update profiles set chess_username = u, pending_username = null, verify_code = null where id = auth.uid();
+  return u;
 end $$;
-
--- Step 2: the code must be visible in the profile's Location or Name.
-create or replace function public.confirm_link() returns text
-language plpgsql security definer set search_path = public as $$
-declare pr profiles; p jsonb;
-begin
-  select * into pr from profiles where id = auth.uid();
-  if pr.pending_username is null then raise exception 'no pending'; end if;
-  p := chesscom_get('https://api.chess.com/pub/player/' || pr.pending_username);
-  if p is null then raise exception 'no such player'; end if;
-  if position(lower(pr.verify_code) in lower(coalesce(p->>'location', '') || ' ' || coalesce(p->>'name', ''))) = 0 then
-    raise exception 'code not found';
-  end if;
-  if exists (select 1 from profiles where chess_username = pr.pending_username and id <> auth.uid()) then raise exception 'taken'; end if;
-  update profiles set chess_username = pending_username, pending_username = null, verify_code = null where id = auth.uid();
-  return pr.pending_username;
-end $$;
+drop function if exists public.start_link(text);
+drop function if exists public.confirm_link();
 
 -- Pulls up to max_months monthly archives per call. The first calls walk the whole
 -- history; once done, each call refreshes the last two months.
