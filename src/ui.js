@@ -267,28 +267,6 @@
     return s + '</svg>';
   }
 
-  function viewTrain() {
-    var items = S.rep.train;
-    if (!items.length) return '<div class="view tview">' + head('تمرین') + '<div class="card fine" style="text-align:center">در این بازی‌ها اشتباه مهره‌ای پیدا نشد که تمرین بسازد.</div></div>';
-    if (S.ti >= items.length) S.ti = 0;
-    var it = items[S.ti], pos = S.tdone && S.tdone.after ? S.tdone.after : it.pos, me = it.game.me;
-    var tg = [];
-    if (S.tsel != null && !S.tdone) tg = Chess.legal(it.pos).filter(function (m) { return m.from === S.tsel; }).map(function (m) { return m.to; });
-    var hl = S.tdone && S.tdone.m ? [S.tdone.m.from, S.tdone.m.to] : (S.tfb && S.tfb.m ? [S.tfb.m.from, S.tfb.m.to] : []);
-    var solvedN = items.filter(function (x) { var p = S.prog[trainKey(x)]; return p && p.solved; }).length;
-    var mine = S.prog[trainKey(it)];
-    var h = '<div class="view tview">' + head('تمرین', '<span class="fine">' + fa(S.ti + 1) + ' از ' + fa(items.length) + ' · ' + fa(solvedN) + ' حل‌شده</span>');
-    h += '<div class="tprog"><div class="track"><div class="fill" style="width:' + (solvedN / items.length * 100) + '%"></div></div></div>';
-    h += '<p class="tq">نوبت ' + (me === 'w' ? 'سفید' : 'سیاه') + ' · در بازی <span class="mono">' + esc(it.played.san) + '</span> زدی (−' + fa(it.b.loss) + ')</p>';
-    h += '<div class="bwrap">' + boardHTML(pos, { flip: me === 'b', click: !S.tdone, sel: S.tsel, tgts: tg, hl: hl, bad: S.tfb && S.tfb.kind === 'no' }) + '</div>';
-    var fb = S.tfb;
-    if (fb) h += '<div class="fb ' + (fb.kind === 'ok' ? 'ok' : fb.kind === 'no' ? 'no' : '') + '" role="status">' + (fb.kind === 'ok' ? ICON.ok : fb.kind === 'no' ? ICON.no : ICON.think) + '<span>' + fb.text + '</span></div>';
-    else if (mine && mine.solved) h += '<div class="fb ok" role="status">' + ICON.ok + '<span>قبلاً حلش کرده‌ای.</span></div>';
-    else h += '<div class="fb" role="status"><span style="color:var(--muted)">حرکت بهتر را روی صفحه بزن.</span></div>';
-    h += '<div class="tact"><button type="button" class="btn" data-t="prev"' + (S.ti === 0 ? ' disabled' : '') + '>قبلی</button><button type="button" class="btn" data-t="reveal">جواب</button><button type="button" class="btn primary" data-t="next">بعدی</button></div></div>';
-    return h;
-  }
-
   // ---------- render ----------
   function render() {
     var v = S.view;
@@ -376,72 +354,312 @@
     else if (e.key === 'End') { e.preventDefault(); navPly('last'); }
   });
 
-  function resetTrain() { S.tsel = null; S.tfb = null; S.tdone = false; S.tatt = 0; }
+  // ---------- engine (Stockfish in a worker, material search as fallback) ----------
+  var SF_PATH = 'vendor/stockfish/stockfish-17.1-lite-single-03e3232.js';
+  var SF = { w: null, ready: false, failed: false, cur: null, next: null, waiting: null };
+
+  function sfInit() {
+    if (SF.w || SF.failed) return;
+    try { SF.w = new Worker(SF_PATH); } catch (e) { SF.failed = true; return; }
+    SF.w.onmessage = function (e) { sfLine(String(e.data)); };
+    SF.w.onerror = function () { sfDead(); };
+    SF.w.postMessage('uci');
+    SF.w.postMessage('isready');
+    setTimeout(function () { if (!SF.ready) sfDead(); }, 15000);
+  }
+  function sfDead() {
+    SF.failed = true; SF.ready = false;
+    try { SF.w && SF.w.terminate(); } catch (e) { }
+    SF.w = null;
+    var jobs = [SF.cur, SF.next, SF.waiting]; SF.cur = SF.next = SF.waiting = null;
+    jobs.forEach(function (j) { if (j) fallback(j); });
+  }
+  function sfLine(l) {
+    if (l === 'readyok') {
+      SF.ready = true;
+      if (SF.waiting) { var q = SF.waiting; SF.waiting = null; sfStart(q); }
+      return;
+    }
+    var c = SF.cur;
+    if (!c) return;
+    if (l.indexOf('info ') === 0 && l.indexOf(' pv ') > 0) {
+      var mp = / multipv (\d+)/.exec(l);
+      if (mp && mp[1] !== '1') return;
+      var cp = / score cp (-?\d+)/.exec(l), mt = / score mate (-?\d+)/.exec(l);
+      c.info = { cp: cp ? +cp[1] : null, mate: mt ? +mt[1] : null, pv: l.split(' pv ')[1].trim().split(' '), depth: +((/ depth (\d+)/.exec(l) || [])[1] || 0) };
+      if (c.onInfo) c.onInfo(c.info);
+    } else if (l.indexOf('bestmove') === 0) {
+      clearTimeout(c.timer);
+      SF.cur = null;
+      if (!c.info) {
+        var bm = l.split(' ')[1];
+        c.info = bm && bm !== '(none)' ? { cp: 0, mate: null, pv: [bm] } : { cp: null, mate: 0, pv: [] };
+      }
+      c.cb(c.info);
+      if (SF.next) { var n = SF.next; SF.next = null; sfStart(n); }
+    }
+  }
+  function sfStart(job) {
+    SF.cur = job;
+    SF.w.postMessage('position fen ' + job.fen);
+    SF.w.postMessage('go depth ' + (job.depth || 16));
+    job.timer = setTimeout(function () { if (SF.w) SF.w.postMessage('stop'); }, job.ms || 2500);
+  }
+  // Analyse a position. cb gets {cp|mate (side to move), pv:[uci]}.
+  function analyse(s, cb, onInfo, opts) {
+    var job = { fen: Chess.toFEN(s), s: s, cb: cb, onInfo: onInfo, depth: opts && opts.depth, ms: opts && opts.ms };
+    sfInit();
+    if (SF.failed) { fallback(job); return; }
+    if (!SF.ready) { if (SF.waiting) SF.waiting.cb(null); SF.waiting = job; return; }
+    if (SF.cur) { if (SF.next) SF.next.cb(null); SF.next = job; SF.w.postMessage('stop'); return; }
+    sfStart(job);
+  }
+  function fallback(job) {
+    setTimeout(function () {
+      var s = job.s, moves = Chess.legal(s);
+      if (!moves.length) { job.cb({ cp: null, mate: 0, pv: [] }); return; }
+      var b = Chess.bestMoves(s, 3)[0];
+      job.cb({ cp: Math.max(-2000, Math.min(2000, b.v * 100)), mate: null, pv: [uciOf(b.m)], rough: true });
+    }, 20);
+  }
+  function uciOf(m) { return Chess.sqName(m.from) + Chess.sqName(m.to) + (m.promo ? m.promo.toLowerCase() : ''); }
+  // Score for the side to move, in centipawns, mates mapped far out.
+  function scoreOf(info) {
+    if (!info) return 0;
+    if (info.mate != null) return info.mate > 0 ? 10000 - info.mate * 10 : -10000 - info.mate * 10;
+    return info.cp || 0;
+  }
+  function whiteScore(info, turn) { var v = scoreOf(info); return turn === 'w' ? v : -v; }
+  function evalLabel(info, turn) {
+    if (!info) return '';
+    if (info.mate != null) {
+      if (info.mate === 0) return '#';
+      var m = turn === 'w' ? info.mate : -info.mate;
+      return (m > 0 ? '+' : '−') + 'M' + Math.abs(m);
+    }
+    var w = whiteScore(info, turn) / 100;
+    return (w > 0 ? '+' : w < 0 ? '−' : '') + Math.abs(w).toFixed(1);
+  }
+  function pvSan(s, pv, n) {
+    var out = [], cur = s;
+    for (var i = 0; i < Math.min(n, pv.length); i++) {
+      var m = Chess.fromUci(cur, pv[i]);
+      if (!m) break;
+      out.push(Chess.san(cur, m));
+      cur = Chess.make(cur, m);
+    }
+    return out;
+  }
+  function evalBar(info, turn, flip) {
+    var pct = 50;
+    if (info) {
+      var w = whiteScore(info, turn);
+      pct = Math.abs(w) >= 9000 ? (w > 0 ? 100 : 0) : 50 + 50 * (2 / (1 + Math.exp(-0.0045 * w)) - 1);
+      pct = Math.max(3, Math.min(97, pct));
+    }
+    var lab = evalLabel(info, turn), whiteAhead = info ? whiteScore(info, turn) >= 0 : true;
+    return '<div class="evalbar' + (flip ? ' flip' : '') + '" role="img" aria-label="ارزیابی ' + esc(lab) + '"><div class="evfill" style="height:' + pct.toFixed(1) + '%"></div>' +
+      (lab ? '<span class="evlab ' + (whiteAhead ? 'w' : 'b') + '">' + esc(lab) + '</span>' : '') + '</div>';
+  }
+
+  // ---------- training ----------
+  function trBase() { return S.rep.train[S.ti]; }
+  function resetTrain() {
+    var it = S.rep && S.rep.train[S.ti];
+    S.tr = it ? { base: it.pos, cur: it.pos, line: [], sel: null, phase: 'solve', fb: null, why: null, info: null, best: null, tok: 0 } : null;
+    S.tatt = 0;
+    if (it) evalCurrent(true);
+  }
+  function evalCurrent(isBase) {
+    var tr = S.tr, tok = ++tr.tok, pos = tr.cur;
+    tr.info = null;
+    analyse(pos, function (info) {
+      if (!info || S.tr !== tr || tr.tok !== tok) return;
+      tr.info = info;
+      if (isBase) tr.best = info;
+      if (S.view === 'train') render();
+    }, function (info) {
+      if (S.tr !== tr || tr.tok !== tok || (info.depth || 0) < 8) return;
+      tr.info = info;
+      if (S.view === 'train') paintEval();
+    });
+  }
+  // Update only the eval bar and engine line while the engine is still thinking.
+  function paintEval() {
+    var tr = S.tr, el = document.getElementById('tbar'), ln = document.getElementById('tline');
+    if (!tr) return;
+    if (el) el.outerHTML = evalBar(tr.info, tr.cur.turn, trBase().game.me === 'b').replace('class="evalbar', 'id="tbar" class="evalbar');
+    if (ln) ln.innerHTML = engineLine(tr);
+  }
+  function engineLine(tr) {
+    if (!tr.info) return '<span class="fine">موتور در حال فکر کردن…</span>';
+    var sans = pvSan(tr.cur, tr.info.pv || [], 6);
+    return '<b class="mono">' + esc(evalLabel(tr.info, tr.cur.turn)) + '</b>' + (sans.length ? ' <span class="mono pv">' + esc(sans.join(' ')) + '</span>' : '') + (tr.info.rough ? ' <span class="fine">(تخمین)</span>' : '');
+  }
   function nextUnsolved(from) {
     var items = S.rep.train, n = items.length;
     for (var k = 1; k <= n; k++) { var i = (from + k) % n, p = S.prog[trainKey(items[i])]; if (!p || !p.solved) return i; }
     return (from + 1) % n;
   }
 
-  function bestFor(i) {
-    if (!S.tcache[i]) S.tcache[i] = Chess.bestMoves(S.rep.train[i].pos, 3);
-    return S.tcache[i];
+  var PIECE_FA = { P: 'سرباز', N: 'اسب', B: 'فیل', R: 'رخ', Q: 'وزیر', K: 'شاه' };
+  function pieceAt(s, sq) { var p = s.b[sq]; return p ? PIECE_FA[p.toUpperCase()] + ' ' + Chess.sqName(sq) : ''; }
+
+  // Plain-language reasons for a move, from what changes on the board.
+  function reasons(s, m) {
+    var me = s.turn, them = me === 'w' ? 'b' : 'w', after = Chess.make(s, m), out = [];
+    var cap = m.ep ? (me === 'w' ? 'p' : 'P') : s.b[m.to];
+    if (Chess.legal(after).length === 0 && Chess.inCheck(after)) return ['مات می‌کند.'];
+    if (cap) out.push(PIECE_FA[cap.toUpperCase()] + ' حریف را در ' + Chess.sqName(m.to) + ' می‌گیری.');
+    var before = Chess.hanging(s, me), now = Chess.hanging(after, me);
+    if (before.indexOf(m.from) >= 0 && now.indexOf(m.to) < 0) out.push(PIECE_FA[m.p.toUpperCase()] + ' را که در خطر بود به خانه‌ی امن می‌بری.');
+    before.forEach(function (sq) {
+      if (sq !== m.from && now.indexOf(sq) < 0 && after.b[sq] === s.b[sq]) out.push('از ' + pieceAt(s, sq) + ' که بی‌دفاع بود دفاع می‌کنی.');
+    });
+    if (Chess.inCheck(after)) out.push('کیش می‌دهی و حریف باید جواب بدهد.');
+    var threatened = Chess.hanging(after, them).filter(function (sq) { return Chess.hanging(s, them).indexOf(sq) < 0; });
+    if (threatened.length) out.push(pieceAt(after, threatened[0]) + ' حریف را تهدید می‌کنی.');
+    if (m.promo) out.push('سرباز را به وزیر تبدیل می‌کنی.');
+    return out.slice(0, 2);
+  }
+
+  // What went wrong with the move played in the game, from the engine's reply.
+  function refutation(s, played, info) {
+    var after = Chess.make(s, played), pv = (info && info.pv) || [], cur = after, me = s.turn;
+    for (var i = 0; i < Math.min(pv.length, 4); i++) {
+      var m = Chess.fromUci(cur, pv[i]);
+      if (!m) break;
+      var cap = cur.b[m.to];
+      if (cur.turn !== me && cap && (Chess.isW(cap) ? 'w' : 'b') === me) {
+        return 'حریف با <span class="mono">' + esc(Chess.san(cur, m)) + '</span> ' + PIECE_FA[cap.toUpperCase()] + ' تو را می‌گیرد.';
+      }
+      cur = Chess.make(cur, m);
+    }
+    var first = pv[0] && Chess.fromUci(after, pv[0]);
+    return first ? 'بهترین جواب حریف <span class="mono">' + esc(Chess.san(after, first)) + '</span> است.' : '';
+  }
+
+  function buildWhy(it, best, bestInfo, cb) {
+    var s = it.pos, lines = [];
+    var rs = reasons(s, best);
+    lines.push('<b class="mono">' + esc(Chess.san(s, best)) + '</b>: ' + (rs.length ? rs.join(' ') : 'بهترین حرکت این موقعیت به نظر موتور.'));
+    var pv = pvSan(s, (bestInfo && bestInfo.pv) || [uciOf(best)], 6);
+    if (pv.length > 1) lines.push('ادامه: <span class="mono pv">' + esc(pv.join(' ')) + '</span>');
+    var playedM = Chess.legal(s).filter(function (m) { return m.from === it.played.from && m.to === it.played.to; })[0];
+    if (!playedM || (playedM.from === best.from && playedM.to === best.to)) { cb(lines); return; }
+    analyse(Chess.make(s, playedM), function (info) {
+      var r = refutation(s, playedM, info);
+      if (r) lines.push('در بازی <span class="mono">' + esc(it.played.san) + '</span> زدی؛ ' + r);
+      cb(lines);
+    }, null, { depth: 14, ms: 1800 });
+  }
+
+  function finishItem(m, solved, text) {
+    var tr = S.tr, it = trBase();
+    tr.phase = 'explore';
+    tr.line = [{ m: m, san: Chess.san(tr.base, m), s: Chess.make(tr.base, m) }];
+    tr.cur = tr.line[0].s;
+    tr.fb = { kind: 'ok', text: text };
+    tr.why = null;
+    saveProgress(it, solved);
+    render();
+    evalCurrent(false);
+    var bestM = tr.best && tr.best.pv && tr.best.pv[0] && Chess.fromUci(tr.base, tr.best.pv[0]);
+    buildWhy(it, bestM || m, bestM ? tr.best : null, function (lines) {
+      if (S.tr !== tr) return;
+      tr.why = lines;
+      if (S.view === 'train') render();
+    });
+  }
+
+  function withBest(cb) {
+    var tr = S.tr;
+    if (tr.best) { cb(tr.best); return; }
+    analyse(tr.base, function (info) { if (S.tr !== tr) return; tr.best = info; cb(info); }, null, { depth: 16, ms: 2500 });
   }
 
   function trainAction(a) {
-    var n = S.rep.train.length;
+    var n = S.rep.train.length, tr = S.tr;
     if (a === 'next') { S.ti = nextUnsolved(S.ti); resetTrain(); render(); return; }
     if (a === 'prev') { S.ti = Math.max(0, S.ti - 1); resetTrain(); render(); return; }
-    if (a === 'reveal') {
-      S.tfb = { kind: 'think', text: 'در حال محاسبه…' }; render();
-      setTimeout(function () {
-        var it = S.rep.train[S.ti], sc = bestFor(S.ti), b = sc[0];
-        var sanStr = Chess.san(it.pos, b.m);
-        S.tdone = { m: b.m, after: Chess.make(it.pos, b.m) };
-        saveProgress(it, false);
-        S.tfb = { kind: 'ok', text: 'یک حرکت امن این‌جا <span class="mono">' + esc(sanStr) + '</span> بود. ' + gainText(sc, it) };
-        render();
-      }, 30);
+    if (a === 'undo') {
+      if (!tr.line.length) return;
+      tr.line.pop(); tr.cur = tr.line.length ? tr.line[tr.line.length - 1].s : tr.base; tr.sel = null;
+      render(); evalCurrent(false); return;
     }
-  }
-
-  function gainText(sc, it) {
-    var playedV = null;
-    sc.forEach(function (x) { if (x.m.from === it.played.from && x.m.to === it.played.to) playedV = x.v; });
-    if (playedV == null) return '';
-    var diff = sc[0].v - playedV;
-    return diff > 0 ? 'این حرکت ' + fa(diff) + ' امتیاز مهره بهتر از حرکت بازی است.' : '';
+    if (a === 'reset') { tr.line = []; tr.cur = tr.base; tr.sel = null; render(); evalCurrent(false); return; }
+    if (a === 'reveal') {
+      tr.fb = { kind: 'think', text: 'در حال محاسبه…' }; render();
+      withBest(function (info) {
+        var m = info && info.pv && info.pv[0] && Chess.fromUci(tr.base, info.pv[0]);
+        if (!m) { tr.fb = { kind: 'no', text: 'جوابی پیدا نشد.' }; render(); return; }
+        finishItem(m, false, '');
+      });
+    }
   }
 
   function trainClick(sq) {
-    var it = S.rep.train[S.ti], pos = it.pos, me = it.game.me;
-    var p = pos.b[sq];
-    if (S.tsel == null || (p && Chess.isW(p) === (me === 'w'))) {
-      if (p && Chess.isW(p) === (me === 'w')) { S.tsel = sq; S.tfb = null; render(); }
+    var tr = S.tr, pos = tr.cur, p = pos.b[sq];
+    var mine = p && (Chess.isW(p) ? 'w' : 'b') === pos.turn;
+    if (tr.sel == null || (mine && sq !== tr.sel)) {
+      if (mine) { tr.sel = sq; if (tr.phase === 'solve') tr.fb = null; render(); }
       return;
     }
-    var mv = Chess.legal(pos).filter(function (m) { return m.from === S.tsel && m.to === sq && (!m.promo || m.promo.toUpperCase() === 'Q'); })[0];
-    if (!mv) { S.tsel = null; render(); return; }
-    S.tsel = null;
-    S.tfb = { kind: 'think', text: 'در حال بررسی حرکت تو…', m: mv }; render();
-    setTimeout(function () {
-      var sc = bestFor(S.ti), best = sc[0].v, mine = null, playedV = null;
-      sc.forEach(function (x) {
-        if (x.m.from === mv.from && x.m.to === mv.to && (x.m.promo || '') === (mv.promo || '')) mine = x.v;
-        if (x.m.from === it.played.from && x.m.to === it.played.to) playedV = x.v;
-      });
-      var sanStr = Chess.san(pos, mv);
-      if (mine >= best) {
-        S.tdone = { m: mv, after: Chess.make(pos, mv) };
-        saveProgress(it, true);
-        S.tfb = { kind: 'ok', text: '<b>درست.</b> با <span class="mono">' + esc(sanStr) + '</span> مهره‌ای از دست نمی‌رود.' };
-      } else if ((S.tatt = (S.tatt || 0) + 1) && playedV != null && mine > playedV) {
-        S.tfb = { kind: 'no', m: mv, text: '<span class="mono">' + esc(sanStr) + '</span> بهتر از حرکت بازی است، ولی هنوز ' + fa(best - mine) + ' امتیاز مهره از دست می‌رود. دوباره امتحان کن.' };
-      } else {
-        S.tfb = { kind: 'no', m: mv, text: 'با <span class="mono">' + esc(sanStr) + '</span> هم ' + fa(Math.max(1, best - mine)) + ' امتیاز مهره از دست می‌رود. دوباره امتحان کن.' };
-      }
-      render();
-    }, 30);
+    var mv = Chess.legal(pos).filter(function (m) { return m.from === tr.sel && m.to === sq && (!m.promo || m.promo.toUpperCase() === 'Q'); })[0];
+    tr.sel = null;
+    if (!mv) { render(); return; }
+    if (tr.phase === 'explore') {
+      tr.line.push({ m: mv, san: Chess.san(pos, mv), s: Chess.make(pos, mv) });
+      tr.cur = tr.line[tr.line.length - 1].s;
+      render(); evalCurrent(false); return;
+    }
+    tr.fb = { kind: 'think', text: 'در حال بررسی…', m: mv }; render();
+    var after = Chess.make(pos, mv), sanStr = Chess.san(pos, mv);
+    withBest(function (best) {
+      analyse(after, function (info) {
+        if (S.tr !== tr) return;
+        var bestV = scoreOf(best), mineV = -scoreOf(info);
+        var isBest = best && best.pv && best.pv[0] === uciOf(mv);
+        if (isBest || mineV >= bestV - 60) {
+          finishItem(mv, true, '<b>درست.</b>');
+        } else {
+          S.tatt = (S.tatt || 0) + 1;
+          var r = refutation(pos, mv, info);
+          tr.fb = { kind: 'no', m: mv, text: '<span class="mono">' + esc(sanStr) + '</span> کافی نیست' + (r ? '؛ ' + r : '.') + ' دوباره امتحان کن.' };
+          render();
+        }
+      }, null, { depth: 14, ms: 1800 });
+    });
+  }
+
+  function viewTrain() {
+    var items = S.rep.train;
+    if (!items.length) return '<div class="view tview">' + head('تمرین') + '<div class="card fine" style="text-align:center">در این بازی‌ها اشتباه مهره‌ای پیدا نشد که تمرین بسازد.</div></div>';
+    if (S.ti >= items.length) S.ti = 0;
+    if (!S.tr || S.tr.base !== items[S.ti].pos) resetTrain();
+    var it = items[S.ti], tr = S.tr, me = it.game.me, pos = tr.cur;
+    var solvedN = items.filter(function (x) { var p = S.prog[trainKey(x)]; return p && p.solved; }).length;
+    var prev = S.prog[trainKey(it)];
+    var h = '<div class="view tview">' + head('تمرین', '<span class="fine">' + fa(S.ti + 1) + ' از ' + fa(items.length) + ' · ' + fa(solvedN) + ' حل‌شده</span>');
+    if (tr.phase === 'solve') h += '<p class="tq">نوبت ' + (me === 'w' ? 'سفید' : 'سیاه') + ' · در بازی <span class="mono">' + esc(it.played.san) + '</span> زدی (−' + fa(it.b.loss) + ')</p>';
+    else h += '<div class="vline mono" dir="ltr">' + (tr.line.length ? tr.line.map(function (x, i) { return '<span' + (i === tr.line.length - 1 ? ' class="cur"' : '') + '>' + esc(x.san) + '</span>'; }).join(' ') : '<span class="fine">موقعیت اول</span>') + '</div>';
+    var tg = [];
+    if (tr.sel != null) tg = Chess.legal(pos).filter(function (m) { return m.from === tr.sel; }).map(function (m) { return m.to; });
+    var lastMove = tr.line.length ? tr.line[tr.line.length - 1].m : (tr.fb && tr.fb.m);
+    h += '<div class="bwrap"><div class="bpair">' + evalBar(tr.info, pos.turn, me === 'b').replace('class="evalbar', 'id="tbar" class="evalbar') +
+      boardHTML(pos, { flip: me === 'b', click: true, sel: tr.sel, tgts: tg, hl: lastMove ? [lastMove.from, lastMove.to] : [], bad: tr.fb && tr.fb.kind === 'no' }) + '</div></div>';
+    if (tr.phase === 'explore') h += '<div class="tline" id="tline">' + engineLine(tr) + '</div>';
+    var fb = tr.fb;
+    if (fb) {
+      var showIcon = tr.phase === 'solve' || fb.kind !== 'ok';
+      h += '<div class="fb ' + (fb.kind === 'ok' ? 'ok' : fb.kind === 'no' ? 'no' : '') + '" role="status">' + (showIcon ? (fb.kind === 'ok' ? ICON.ok : fb.kind === 'no' ? ICON.no : ICON.think) : '') + '<div class="fbt">' + (fb.text ? '<span>' + fb.text + '</span>' : '');
+      if (tr.phase === 'explore') h += tr.why ? tr.why.map(function (l) { return '<span class="why">' + l + '</span>'; }).join('') : '<span class="why fine">در حال پیدا کردن دلیل…</span>';
+      h += '</div></div>';
+    } else if (prev && prev.solved) h += '<div class="fb ok" role="status">' + ICON.ok + '<span>قبلاً حلش کرده‌ای.</span></div>';
+    else h += '<div class="fb" role="status"><span style="color:var(--muted)">حرکت بهتر را روی صفحه بزن.</span></div>';
+    if (tr.phase === 'solve') h += '<div class="tact"><button type="button" class="btn" data-t="prev"' + (S.ti === 0 ? ' disabled' : '') + '>قبلی</button><button type="button" class="btn" data-t="reveal">جواب</button><button type="button" class="btn primary" data-t="next">بعدی</button></div>';
+    else h += '<div class="tact"><button type="button" class="btn" data-t="undo"' + (tr.line.length ? '' : ' disabled') + '>برگرد</button><button type="button" class="btn" data-t="reset">از نو</button><button type="button" class="btn primary" data-t="next">بعدی</button></div>';
+    return h + '</div>';
   }
 
   var RECENT = 300;

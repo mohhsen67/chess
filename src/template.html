@@ -260,6 +260,28 @@ button.sq{cursor:pointer}
 .brow .meta b{font-size:16px;color:var(--text)}
 button.uchip{cursor:pointer;font:inherit;font-size:13px}
 
+/* eval bar + analysis */
+.bpair{display:flex;gap:6px;width:min(100cqw,calc(100cqh + 20px));direction:ltr}
+.bpair .board{flex:1;min-width:0}
+.evalbar{position:relative;flex:none;width:14px;border-radius:6px;overflow:hidden;background:#2B3144;box-shadow:0 0 0 1px var(--line)}
+.evfill{position:absolute;left:0;right:0;bottom:0;background:#F2EFE8;transition:height .35s ease}
+.evalbar.flip .evfill{bottom:auto;top:0}
+.evlab{position:absolute;left:0;right:0;text-align:center;font-family:var(--font-mono);font-size:8px;font-weight:700;writing-mode:vertical-rl;transform:rotate(180deg);line-height:14px}
+.evlab.w{bottom:3px;color:#2B3144}
+.evlab.b{top:3px;color:#F2EFE8}
+.evalbar.flip .evlab.w{bottom:auto;top:3px}
+.evalbar.flip .evlab.b{top:auto;bottom:3px}
+.tline{flex:none;display:flex;gap:8px;align-items:baseline;font-size:13px;overflow:hidden;white-space:nowrap;direction:ltr;justify-content:flex-end}
+.tline .pv{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.vline{flex:none;font-size:13px;color:var(--muted);overflow-x:auto;white-space:nowrap;scrollbar-width:none;text-align:right}
+.vline .cur{color:var(--accent);font-weight:600}
+.fb{max-height:32%;overflow-y:auto}
+.fbt{display:flex;flex-direction:column;gap:4px;min-width:0}
+.why{font-size:13px;color:#C4CCDC;line-height:1.65}
+.tview .fb{padding:8px 12px}
+.why .pv{color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.evfill{transition:none}}
+
 /* board color picker */
 .swatches{display:flex;gap:8px}
 .kv .swatches{border:0;padding:0}

@@ -333,10 +333,62 @@ var Chess = (function () {
     return { h: h, plies: plies, start: h.FEN ? fromFEN(h.FEN) : start() };
   }
 
+
+  function toFEN(s) {
+    var rows = [];
+    for (var r = 7; r >= 0; r--) {
+      var row = '', empty = 0;
+      for (var f = 0; f < 8; f++) {
+        var p = s.b[r * 8 + f];
+        if (!p) { empty++; continue; }
+        if (empty) { row += empty; empty = 0; }
+        row += p;
+      }
+      if (empty) row += empty;
+      rows.push(row);
+    }
+    var cs = (s.castle.K ? 'K' : '') + (s.castle.Q ? 'Q' : '') + (s.castle.k ? 'k' : '') + (s.castle.q ? 'q' : '');
+    return rows.join('/') + ' ' + s.turn + ' ' + (cs || '-') + ' ' + (s.ep >= 0 ? sqName(s.ep) : '-') + ' 0 1';
+  }
+
+  function fromUci(s, u) {
+    var from = sqIdx(u.slice(0, 2)), to = sqIdx(u.slice(2, 4)), pr = u[4];
+    return legal(s).filter(function (m) {
+      return m.from === from && m.to === to && (!m.promo || m.promo.toLowerCase() === (pr || 'q'));
+    })[0] || null;
+  }
+
+  // Cheapest piece of color `by` that can capture on sq (legal moves only), or 0.
+  function cheapestAttacker(s, sq, by) {
+    var t = s.turn === by ? s : { b: s.b, turn: by, castle: s.castle, ep: -1 };
+    var best = 0;
+    legal(t).forEach(function (m) {
+      if (m.to !== sq) return;
+      var v = m.p.toUpperCase() === 'K' ? 100 : VAL[m.p.toUpperCase()];
+      if (!best || v < best) best = v;
+    });
+    return best;
+  }
+
+  // Pieces of `color` (not the king) that can be taken for free or by a cheaper piece.
+  function hanging(s, color) {
+    var out = [], them = color === 'w' ? 'b' : 'w';
+    for (var i = 0; i < 64; i++) {
+      var p = s.b[i];
+      if (!p || (isW(p) ? 'w' : 'b') !== color || p.toUpperCase() === 'K' || p.toUpperCase() === 'P' && false) continue;
+      var a = cheapestAttacker(s, i, them);
+      if (!a) continue;
+      var v = VAL[p.toUpperCase()];
+      if (!attacked(s, i, color) || a < v) out.push(i);
+    }
+    return out;
+  }
+
   return {
     start: start, fromFEN: fromFEN, legal: legal, make: make, san: san, parseSan: parseSan,
     inCheck: inCheck, material: material, search: search, bestMoves: bestMoves,
-    parsePGN: parsePGN, sqName: sqName, sqIdx: sqIdx, isW: isW, VAL: VAL
+    parsePGN: parsePGN, sqName: sqName, sqIdx: sqIdx, isW: isW, VAL: VAL,
+    toFEN: toFEN, fromUci: fromUci, attacked: attacked, hanging: hanging, cheapestAttacker: cheapestAttacker
   };
 })();
 if (typeof module !== 'undefined') module.exports = Chess;
