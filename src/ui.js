@@ -92,7 +92,7 @@
         if (o.sel === i) cls += ' sel';
         if (o.tgts && o.tgts.indexOf(i) >= 0) cls += ' tgt' + (p ? ' cap' : '');
         var inner = '';
-        if (p) inner += '<span class="' + (Chess.isW(p) ? 'pw' : 'pb') + '" aria-hidden="true">' + GLYPH[p.toUpperCase()] + '︎</span>';
+        if (p) inner += '<span class="pc ' + (Chess.isW(p) ? 'w' : 'b') + p.toUpperCase() + '" aria-hidden="true"></span>';
         if (vr === 7) inner += '<span class="coord f" aria-hidden="true">' + 'abcdefgh'[f] + '</span>';
         if (vf === 0) inner += '<span class="coord r" aria-hidden="true">' + (r + 1) + '</span>';
         var label = Chess.sqName(i) + (p ? ' ' + PNAME[p.toUpperCase()] + ' ' + (Chess.isW(p) ? 'سفید' : 'سیاه') : '');
@@ -350,6 +350,7 @@
     if (t.dataset.t) { trainAction(t.dataset.t); return; }
     if (t.dataset.act) { act(t.dataset.act, t); return; }
     if (t.dataset.copy) { copyText(t.dataset.copy, t); return; }
+    if (t.dataset.board) { setBoard(t.dataset.board); return; }
     if (t.dataset.sq) { trainClick(+t.dataset.sq); return; }
   });
 
@@ -528,6 +529,7 @@
     db('GET', 'profiles?select=*&id=eq.' + session.user.id).then(function (rows) {
       S.profile = rows && rows[0];
       if (!S.profile) throw new Error('پروفایل پیدا نشد. یک بار خارج شو و دوباره وارد شو.');
+      if (S.profile.settings && S.profile.settings.board) { applyBoard(S.profile.settings.board); store('shatranj.board', S.board); }
       if (!S.profile.chess_username) { S.stage = 'ready'; render(); return; }
       S.stage = 'ready'; S.user = S.profile.chess_username; render();
       loadProgress();
@@ -640,6 +642,7 @@
     h += '<div><span>ایمیل</span><span class="mono">' + esc(session.user && session.user.email || '') + '</span></div>';
     h += '<div><span>Chess.com</span>' + (p.chess_username ? '<span class="mono">' + esc(p.chess_username) + '</span>' : '<button type="button" class="linkbtn inline" style="font-size:14px" data-act="show-link">وصل کردن</button>') + '</div>';
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
+    h += '<div><span>رنگ صفحه</span>' + boardPicker() + '</div>';
     h += '</div>';
     h += '<div class="stack">' + (p.chess_username ? '<button type="button" class="btn" data-act="sync"' + (S.syncing ? ' disabled' : '') + '>همگام‌سازی</button>' : '') + '<button type="button" class="btn ghost" data-act="signout">خروج</button></div>';
     return h + '</div></div>';
@@ -667,6 +670,30 @@
     });
     h += '</div><p class="fine" style="flex:none">ریتینگ بلیتز · <button type="button" class="linkbtn inline" data-act="leave">ترک باشگاه</button></p>';
     return h + '</div>';
+  }
+
+  // ---------- board colors ----------
+  var BOARDS = [['lavender', 'یاسی', '#E6E1F5', '#8F82C6'], ['green', 'سبز', '#EBECD0', '#779556'], ['blue', 'آبی', '#DEE3E6', '#8CA2AD'], ['wood', 'چوبی', '#F0D9B5', '#B58863']];
+  function applyBoard(name) {
+    var b = BOARDS.filter(function (x) { return x[0] === name; })[0] || BOARDS[0];
+    S.board = b[0];
+    document.body.style.setProperty('--sq-light', b[2]);
+    document.body.style.setProperty('--sq-dark', b[3]);
+  }
+  function boardPicker() {
+    var h = '<div class="swatches" role="group" aria-label="رنگ صفحه">';
+    BOARDS.forEach(function (b) {
+      h += '<button type="button" class="swatch" data-board="' + b[0] + '" aria-pressed="' + (S.board === b[0]) + '" aria-label="' + b[1] + '"><i style="background:' + b[2] + '"></i><i style="background:' + b[3] + '"></i><i style="background:' + b[3] + '"></i><i style="background:' + b[2] + '"></i></button>';
+    });
+    return h + '</div>';
+  }
+  function setBoard(name) {
+    applyBoard(name); store('shatranj.board', name); render();
+    if (S.profile && session) {
+      var st = Object.assign({}, S.profile.settings || {}, { board: name });
+      S.profile.settings = st;
+      db('PATCH', 'profiles?id=eq.' + session.user.id, { settings: st }, 'return=minimal').catch(function () { });
+    }
   }
 
   // ---------- account events ----------
@@ -718,6 +745,7 @@
   // ---------- boot ----------
   (function () {
     try { session = JSON.parse(recall('shatranj.session') || 'null'); } catch (e) { session = null; }
+    applyBoard(recall('shatranj.board'));
     forget('shatranj.pgn'); forget('shatranj.src');
     // Coming back from an email confirmation link: Supabase puts the session in the hash.
     var hp = /access_token=([^&]+)/.exec(location.hash || '');
