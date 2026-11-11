@@ -608,15 +608,11 @@
   }
 
   function viewLink() {
-    var h = '<section class="welcome"><div class="card wcard">' + brandHead(true);
-    if (!S.showLink) {
-      h += '<p class="lead" style="text-align:center">بازی‌هایت هنوز خوانده نشده.</p>';
-      h += '<button type="button" class="btn primary" data-act="show-link">خواندن بازی‌ها از Chess.com</button>';
-    } else {
-      h += '<form id="linkf" class="form" novalidate>' + fld('cuser', 'نام کاربری Chess.com', 'dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false"');
-      h += '<div class="row2"><button type="button" class="btn ghost" data-act="hide-link">انصراف</button><button type="submit" class="btn primary">ادامه</button></div>' + msg('lmsg', S.lmsg) + '</form>';
-    }
-    return h + '</div></section>';
+    var titles = { report: 'گزارش', games: 'بازی‌ها', train: 'تمرین' };
+    var h = '<div class="view iwrap">' + head(titles[S.view] || 'گزارش') + '<div class="card icard">';
+    h += '<div class="wm-head">' + wtile('blunder') + '<div><h2>بازی‌هایت را بیاور</h2><p class="fine">گزارش از روی بازی‌های تو در Chess.com ساخته می‌شود.</p></div></div>';
+    h += '<form id="linkf" class="form" novalidate><div class="inrow">' + fld('cuser', 'نام کاربری Chess.com', 'dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false"') + '<button type="submit" class="btn primary">آوردن</button></div>' + msg('lmsg', S.lmsg) + '</form>';
+    return h + '</div></div>';
   }
 
   function viewSync() {
@@ -674,8 +670,7 @@
   function act(a, t) {
     if (a === 'amode-in' || a === 'amode-up') { S.amode = a === 'amode-up' ? 'up' : 'in'; S.amsg = ''; render(); return; }
     if (a === 'retry') { loadAccount(); return; }
-    if (a === 'show-link') { S.showLink = true; S.lmsg = ''; if (S.view !== 'report') go('report'); else render(); var c = document.getElementById('cuser'); if (c) c.focus(); return; }
-    if (a === 'hide-link') { S.showLink = false; S.lmsg = ''; render(); return; }
+    if (a === 'show-link') { S.lmsg = ''; go('report'); var c = document.getElementById('cuser'); if (c) c.focus(); return; }
     if (a === 'signout') { signOut(); return; }
     if (a === 'sync') { S.syncErr = null; syncLoop(0); render(); return; }
     if (a === 'leave') {
