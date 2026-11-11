@@ -66,7 +66,7 @@ p{margin:0}
 .nav a{display:flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:12px;color:var(--muted);text-decoration:none;font-size:15px;font-weight:500}
 .nav a:hover,.nav a[aria-current="page"]{color:var(--text);background:var(--raise)}
 .nav a svg{width:18px;height:18px}
-body.noreport .nav a:not([data-view="club"]):not([data-view="account"]){opacity:.45;pointer-events:none}
+body.noreport .nav a[data-view="games"],body.noreport .nav a[data-view="train"]{opacity:.45;pointer-events:none}
 body.signedout .nav{display:none}
 body.signedout main{padding-bottom:20px}
 main{flex:1;min-height:0;width:100%;max-width:1180px;margin:0 auto;padding:20px;display:flex;flex-direction:column}

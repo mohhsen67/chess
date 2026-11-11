@@ -298,7 +298,7 @@
     else if (S.stage === 'loading' || !S.stage || S.fatal) html = viewLoading();
     else if (v === 'account') html = viewAccount();
     else if (v === 'club') html = viewClub();
-    else if (S.stage === 'link') html = viewLink();
+    else if (!S.profile.chess_username) html = viewLink();
     else if (!S.rep) html = viewSync();
     else html = v === 'games' ? viewGames() : v === 'train' ? viewTrain() : viewReport();
     app.innerHTML = html;
@@ -525,7 +525,7 @@
     db('GET', 'profiles?select=*&id=eq.' + session.user.id).then(function (rows) {
       S.profile = rows && rows[0];
       if (!S.profile) throw new Error('پروفایل پیدا نشد. یک بار خارج شو و دوباره وارد شو.');
-      if (!S.profile.chess_username) { S.stage = 'link'; render(); return; }
+      if (!S.profile.chess_username) { S.stage = 'ready'; render(); return; }
       S.stage = 'ready'; S.user = S.profile.chess_username; render();
       loadProgress();
       return fetchGames().then(function () { render(); syncLoop(0); });
@@ -609,8 +609,13 @@
 
   function viewLink() {
     var h = '<section class="welcome"><div class="card wcard">' + brandHead(true);
-    h += '<form id="linkf" class="form" novalidate>' + fld('cuser', 'نام کاربری Chess.com', 'dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false"');
-    h += '<button type="submit" class="btn primary">ادامه</button>' + msg('lmsg', S.lmsg) + '</form>';
+    if (!S.showLink) {
+      h += '<p class="lead" style="text-align:center">بازی‌هایت هنوز خوانده نشده.</p>';
+      h += '<button type="button" class="btn primary" data-act="show-link">خواندن بازی‌ها از Chess.com</button>';
+    } else {
+      h += '<form id="linkf" class="form" novalidate>' + fld('cuser', 'نام کاربری Chess.com', 'dir="ltr" autocomplete="off" autocapitalize="off" spellcheck="false"');
+      h += '<div class="row2"><button type="button" class="btn ghost" data-act="hide-link">انصراف</button><button type="submit" class="btn primary">ادامه</button></div>' + msg('lmsg', S.lmsg) + '</form>';
+    }
     return h + '</div></section>';
   }
 
@@ -630,11 +635,11 @@
 
   function viewAccount() {
     var p = S.profile || {}, s = S.sync;
-    var st = S.syncing ? 'در حال همگام‌سازی…' : S.syncErr ? S.syncErr : s ? 'به‌روز' : '–';
+    var st = !p.chess_username ? '–' : S.syncing ? 'در حال همگام‌سازی…' : S.syncErr ? S.syncErr : s ? 'به‌روز' : '–';
     var h = '<div class="view iwrap">' + head('حساب') + '<div class="card icard"><div class="kv">';
     h += '<div><span>نام کاربری</span><span class="mono">' + esc(p.display_name || '') + '</span></div>';
     h += '<div><span>ایمیل</span><span class="mono">' + esc(session.user && session.user.email || '') + '</span></div>';
-    h += '<div><span>Chess.com</span><span class="mono">' + esc(p.chess_username || 'وصل نشده') + '</span></div>';
+    h += '<div><span>Chess.com</span>' + (p.chess_username ? '<span class="mono">' + esc(p.chess_username) + '</span>' : '<button type="button" class="linkbtn inline" style="font-size:14px" data-act="show-link">وصل کردن</button>') + '</div>';
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
     h += '</div>';
     h += '<div class="stack">' + (p.chess_username ? '<button type="button" class="btn" data-act="sync"' + (S.syncing ? ' disabled' : '') + '>همگام‌سازی</button>' : '') + '<button type="button" class="btn ghost" data-act="signout">خروج</button></div>';
@@ -669,6 +674,8 @@
   function act(a, t) {
     if (a === 'amode-in' || a === 'amode-up') { S.amode = a === 'amode-up' ? 'up' : 'in'; S.amsg = ''; render(); return; }
     if (a === 'retry') { loadAccount(); return; }
+    if (a === 'show-link') { S.showLink = true; S.lmsg = ''; if (S.view !== 'report') go('report'); else render(); var c = document.getElementById('cuser'); if (c) c.focus(); return; }
+    if (a === 'hide-link') { S.showLink = false; S.lmsg = ''; render(); return; }
     if (a === 'signout') { signOut(); return; }
     if (a === 'sync') { S.syncErr = null; syncLoop(0); render(); return; }
     if (a === 'leave') {
