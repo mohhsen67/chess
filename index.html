@@ -1000,6 +1000,17 @@ var Analyze = (function () {
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
   function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function forget(k) { try { localStorage.removeItem(k); } catch (e) { } }
+  // Date and time of a game, in the viewer's time zone (Chess.com headers are UTC).
+  function gameWhen(x) {
+    var h = x.g.h, d = /^(\d{4})\.(\d{2})\.(\d{2})/.exec(h.UTCDate || h.Date || ''), t = /^(\d{1,2}):(\d{2})/.exec(h.UTCTime || h.StartTime || '');
+    if (!d) return '';
+    if (!t) return faDate(d[0]);
+    var dt = h.UTCDate ? new Date(Date.UTC(+d[1], +d[2] - 1, +d[3], +t[1], +t[2])) : new Date(+d[1], +d[2] - 1, +d[3], +t[1], +t[2]);
+    var two = function (n) { return (n < 10 ? '0' : '') + n; };
+    var ds = dt.getFullYear() + '.' + two(dt.getMonth() + 1) + '.' + two(dt.getDate());
+    var fd = function (s) { return String(s).replace(/\d/g, function (c) { return '۰۱۲۳۴۵۶۷۸۹'[c]; }); };
+    return faDate(ds) + '، ' + fd(two(dt.getHours()) + ':' + two(dt.getMinutes()));
+  }
   function faDate(d) {
     var m = /^(\d{4})\.(\d{2})\.(\d{2})/.exec(d || '');
     if (!m) return '';
@@ -1205,7 +1216,7 @@ var Analyze = (function () {
     if (!list.length) h += '<p class="fine" style="text-align:center;padding:30px">بازی‌ای با این فیلتر نیست.</p>';
     list.forEach(function (x) {
       h += '<button type="button" class="gitem" data-gid="' + x.id + '" aria-current="' + (x.id === S.gid) + '"><span class="tile sm ' + RTONE[x.res] + '">' + ROOK + '</span>';
-      h += '<span class="who"><b dir="auto">' + esc(x.opp) + (x.oppElo ? ' <span class="mono" style="color:var(--muted);font-size:12px">' + esc(x.oppElo) + '</span>' : '') + '</b><small>' + faDate(x.date) + ' | با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' | <span dir="ltr">' + esc(x.opening) + '</span></small></span>';
+      h += '<span class="who"><b dir="auto">' + esc(x.opp) + (x.oppElo ? ' <span class="mono" style="color:var(--muted);font-size:12px">' + esc(x.oppElo) + '</span>' : '') + '</b><small>' + gameWhen(x) + ' | با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' | <span dir="ltr">' + esc(x.opening) + '</span></small></span>';
       h += '<span class="meta"><span class="gres ' + x.res + '">' + RES[x.res] + '</span>' + (x.blunders.length ? '<span class="flag">' + fa(x.blunders.length) + ' اشتباه</span>' : '<span>' + fa(x.moves) + ' حرکت</span>') + '</span></button>';
     });
     h += '</div></section><section class="gview" aria-label="مرور بازی">' + viewer() + '</section></div>';
@@ -1222,7 +1233,7 @@ var Analyze = (function () {
     var hl = cur >= 0 ? [plies[cur].from, plies[cur].to] : [];
     var term = x.res === 'D' ? 'مساوی' : RES[x.res] + (TERM[x.term] ? ' ' + TERM[x.term] : '');
     var h = '<div class="vtop"><button type="button" class="iconbtn back" data-back="1" aria-label="برگشت به فهرست">' + ICON.next + '</button>';
-    h += '<div class="vt"><b><span class="pill ' + x.res + '">' + RES[x.res] + '</span><bdi>' + esc(x.opp) + '</bdi></b><small>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · ' + term + ' · ' + faDate(x.date) + ' · <bdi>' + esc(x.opening) + '</bdi></small></div></div>';
+    h += '<div class="vt"><b><span class="pill ' + x.res + '">' + RES[x.res] + '</span><bdi>' + esc(x.opp) + '</bdi></b><small>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · ' + term + ' · ' + gameWhen(x) + ' · <bdi>' + esc(x.opening) + '</bdi></small></div></div>';
     h += '<div class="bwrap" id="vboard" tabindex="0" aria-label="صفحه‌ی بازی؛ با کلیدهای جهت حرکت کن">' + boardHTML(s, { flip: x.me === 'b', hl: hl, bad: !!bl }) + '</div>';
     h += '<div class="ctrls"><button type="button" data-nav="first" aria-label="شروع بازی">' + ICON.first + '</button><button type="button" data-nav="prev" aria-label="حرکت قبل">' + ICON.prev + '</button><button type="button" data-nav="next" aria-label="حرکت بعد">' + ICON.next + '</button><button type="button" data-nav="last" aria-label="آخر بازی">' + ICON.last + '</button></div>';
     h += '<div class="matc">' + matChart(x, cur) + '</div>';
