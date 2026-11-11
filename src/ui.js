@@ -592,7 +592,7 @@
     var h = '<section class="welcome"><div class="card wcard">' + brandHead(true);
     h += '<div class="seg" role="group" aria-label="ورود یا ثبت‌نام"><button type="button" data-act="amode-in" aria-pressed="' + !up + '">ورود</button><button type="button" data-act="amode-up" aria-pressed="' + up + '">ثبت‌نام</button></div>';
     h += '<form id="authf" class="form" novalidate>';
-    if (up) h += fld('aname', 'نام کاربری', 'autocomplete="username" autocapitalize="off" spellcheck="false"');
+    if (up) h += fld('aname', 'نام کاربری', 'dir="ltr" autocomplete="username" autocapitalize="off" spellcheck="false"');
     h += fld('aemail', 'ایمیل', 'type="email" dir="ltr" autocomplete="email" autocapitalize="off"');
     h += fld('apw', 'رمز عبور', 'type="password" dir="ltr" minlength="6" autocomplete="' + (up ? 'new-password' : 'current-password') + '"');
     h += '<button type="submit" class="btn primary">' + (up ? 'ساختن حساب' : 'ورود') + '</button>';
@@ -641,7 +641,7 @@
     var p = S.profile || {}, s = S.sync;
     var st = S.syncing ? 'در حال همگام‌سازی…' : S.syncErr ? S.syncErr : s ? 'به‌روز' : '–';
     var h = '<div class="view iwrap">' + head('حساب') + '<div class="card icard"><div class="kv">';
-    h += '<div><span>نام کاربری</span><span>' + esc(p.display_name || '') + '</span></div>';
+    h += '<div><span>نام کاربری</span><span class="mono">' + esc(p.display_name || '') + '</span></div>';
     h += '<div><span>ایمیل</span><span class="mono">' + esc(session.user && session.user.email || '') + '</span></div>';
     h += '<div><span>Chess.com</span><span class="mono">' + esc(p.chess_username || 'وصل نشده') + '</span></div>';
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
@@ -667,7 +667,7 @@
     else if (!S.board.length) h += '<p class="fine">هنوز عضوی نیست.</p>';
     else S.board.forEach(function (m, i) {
       var sc = m.score_30d == null ? '–' : pct(+m.score_30d);
-      h += '<div class="brow' + (m.is_me ? ' me' : '') + '"><span class="rank">' + fa(i + 1) + '</span><span class="who"><b>' + esc(m.display_name) + (m.is_me ? ' <small class="fine">(تو)</small>' : '') + '</b><small class="mono">' + esc(m.chess_username || 'وصل نشده') + '</small></span>';
+      h += '<div class="brow' + (m.is_me ? ' me' : '') + '"><span class="rank">' + fa(i + 1) + '</span><span class="who"><b><bdi dir="ltr">' + esc(m.display_name) + '</bdi>' + (m.is_me ? ' <small class="fine">(تو)</small>' : '') + '</b><small class="mono">' + esc(m.chess_username || 'وصل نشده') + '</small></span>';
       h += '<span class="meta"><b class="mono">' + (m.rating != null ? esc(m.rating) : '–') + '</b><span>' + fa(m.games_30d || 0) + ' بازی · ' + sc + '</span></span></div>';
     });
     h += '</div><p class="fine" style="flex:none">ریتینگ بلیتز · <button type="button" class="linkbtn inline" data-act="leave">ترک باشگاه</button></p>';

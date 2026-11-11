@@ -280,7 +280,8 @@ button.uchip{cursor:pointer;font:inherit;font-size:13px}
 .iwrap{max-width:620px;width:100%;margin:0 auto}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:13px;color:var(--muted)}
-.field input,.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-height:48px;font-size:16px}
+.field input,input[dir="ltr"]:placeholder-shown{direction:rtl}
+.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-height:48px;font-size:16px}
 .field textarea{min-height:84px;font-family:var(--font-mono);font-size:12px;direction:ltr;resize:none}
 .dl{display:flex;flex-direction:column;gap:4px}
 .dl a{font-size:14px}
