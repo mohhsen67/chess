@@ -1016,28 +1016,11 @@
     try { navigator.clipboard.writeText(t).then(done, function () { }); } catch (e) { }
   }
 
-  // iPhone home-screen app: the page can be drawn under the status bar while the
-  // viewport is reported shorter than the screen, leaving a strip at the bottom.
-  function fitStandalone() {
-    var st = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-    var root = document.documentElement;
-    if (!st || innerWidth > innerHeight) { root.style.removeProperty('--app-h'); return; }
-    var p = document.createElement('div');
-    p.style.cssText = 'position:fixed;top:0;left:0;width:1px;padding-top:env(safe-area-inset-top);visibility:hidden';
-    document.body.appendChild(p);
-    var top = p.getBoundingClientRect().height;
-    p.remove();
-    if (top > 0 && innerHeight < screen.height) root.style.setProperty('--app-h', screen.height + 'px');
-    else root.style.removeProperty('--app-h');
-  }
-
   // ---------- boot ----------
   (function () {
     try { session = JSON.parse(recall('shatranj.session') || 'null'); } catch (e) { session = null; }
     applyBoard(recall('shatranj.board'));
     applyPieces(recall('shatranj.pieces'));
-    fitStandalone();
-    window.addEventListener('resize', fitStandalone);
     forget('shatranj.pgn'); forget('shatranj.src');
     // Coming back from an email confirmation link: Supabase puts the session in the hash.
     var hp = /access_token=([^&]+)/.exec(location.hash || '');
