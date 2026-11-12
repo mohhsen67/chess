@@ -229,7 +229,7 @@
     if (!list.length) h += '<p class="fine" style="text-align:center;padding:30px">بازی‌ای با این فیلتر نیست.</p>';
     list.forEach(function (x) {
       h += '<button type="button" class="gitem" data-gid="' + x.id + '" aria-current="' + (x.id === S.gid) + '"><span class="tile sm ' + RTONE[x.res] + '">' + ROOK + '</span>';
-      h += '<span class="who"><b dir="auto">' + esc(x.opp) + (x.oppElo ? ' <span class="mono" style="color:var(--muted);font-size:12px">' + esc(x.oppElo) + '</span>' : '') + '</b><small>' + gameWhen(x) + ' | با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' | <span dir="ltr">' + esc(x.opening) + '</span></small></span>';
+      h += '<span class="who"><b dir="auto">' + esc(x.opp) + (x.oppElo ? ' <span class="mono" style="color:var(--muted);font-size:12px">' + esc(x.oppElo) + '</span>' : '') + '</b><small><i class="cdot ' + x.me + '" aria-label="' + (x.me === 'w' ? 'با سفید' : 'با سیاه') + '"></i>' + gameWhen(x) + '</small><small class="vop" dir="ltr">' + esc(x.opening) + '</small></span>';
       h += '<span class="meta"><span class="gres ' + x.res + '">' + RES[x.res] + '</span>' + (x.blunders.length ? '<span class="flag">' + fa(x.blunders.length) + ' اشتباه</span>' : '<span>' + fa(x.moves) + ' حرکت</span>') + '</span></button>';
     });
     h += '</div></section><section class="gview" aria-label="مرور بازی">' + viewer() + '</section></div>';
@@ -246,7 +246,9 @@
     var hl = cur >= 0 ? [plies[cur].from, plies[cur].to] : [];
     var term = x.res === 'D' ? 'مساوی' : RES[x.res] + (TERM[x.term] ? ' ' + TERM[x.term] : '');
     var h = '<div class="vtop"><button type="button" class="iconbtn back" data-back="1" aria-label="برگشت به فهرست">' + ICON.next + '</button>';
-    h += '<div class="vt"><b><span class="pill ' + x.res + '">' + RES[x.res] + '</span><bdi>' + esc(x.opp) + '</bdi></b><small>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · ' + term + ' · ' + gameWhen(x) + ' · <bdi>' + esc(x.opening) + '</bdi></small></div></div>';
+    h += '<div class="vt"><b><span class="pill ' + x.res + '">' + RES[x.res] + '</span><bdi>' + esc(x.opp) + '</bdi>' + (x.oppElo ? '<span class="mono velo">' + esc(x.oppElo) + '</span>' : '') + '</b>';
+    h += '<small><i class="cdot ' + x.me + '" aria-hidden="true"></i>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · ' + term + ' · ' + gameWhen(x) + '</small>';
+    h += '<small class="vop" dir="ltr" title="' + esc(x.opening) + '">' + esc(x.opening) + '</small></div></div>';
     h += '<div class="gchartw" id="gchart">' + evalGraph(x, cur) + '</div>';
     h += '<div class="bwrap" id="vboard" tabindex="0" aria-label="صفحه‌ی بازی؛ با کلیدهای جهت حرکت کن">' + boardHTML(s, { flip: x.me === 'b', hl: hl, bad: !!bl }) + '</div>';
     h += '<div class="ctrls"><button type="button" data-nav="first" aria-label="شروع بازی">' + ICON.first + '</button><button type="button" data-nav="prev" aria-label="حرکت قبل">' + ICON.prev + '</button><button type="button" data-nav="next" aria-label="حرکت بعد">' + ICON.next + '</button><button type="button" data-nav="last" aria-label="آخر بازی">' + ICON.last + '</button></div>';
@@ -899,7 +901,6 @@
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
     h += '<div><span>رنگ صفحه</span>' + boardPicker() + '</div>';
     h += '<div><span>مهره‌ها</span>' + piecePicker() + '</div>';
-    h += '</div><p class="fine mono" dir="ltr" style="opacity:.5;font-size:10px">' + screenInfo() + '</p><div class="kv" style="display:none">';
     h += '</div>';
     h += '<div class="stack">' + (p.chess_username ? '<button type="button" class="btn" data-act="sync"' + (S.syncing ? ' disabled' : '') + '>همگام‌سازی</button>' : '') + '<button type="button" class="btn ghost" data-act="signout">خروج</button></div>';
     return h + '</div></div>';
@@ -1015,15 +1016,6 @@
   function copyText(t, btn) {
     var done = function () { var o = btn.innerHTML; btn.textContent = 'کپی شد'; setTimeout(function () { btn.innerHTML = o; }, 1400); };
     try { navigator.clipboard.writeText(t).then(done, function () { }); } catch (e) { }
-  }
-
-  function screenInfo() {
-    var p = document.createElement('div');
-    p.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100vh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);visibility:hidden';
-    document.body.appendChild(p);
-    var cs = getComputedStyle(p), r = [innerHeight, document.documentElement.clientHeight, screen.height, Math.round(parseFloat(cs.height)), parseInt(cs.paddingTop, 10), parseInt(cs.paddingBottom, 10), document.body.getBoundingClientRect().height | 0, document.documentElement.classList.contains('standalone') ? 's' : 'b'];
-    p.remove();
-    return r.join(' · ');
   }
 
   // ---------- boot ----------
