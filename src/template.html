@@ -49,6 +49,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--
 body{display:flex;flex-direction:column}
 /* iPhone home-screen app draws under the status bar but reports a viewport that is shorter by the same amount */
 html,body{height:calc(100% + env(safe-area-inset-top))}
+html.standalone,html.standalone body{height:100vh;height:100lvh}
 a{color:var(--accent)}
 button,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}

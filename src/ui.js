@@ -899,6 +899,7 @@
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
     h += '<div><span>رنگ صفحه</span>' + boardPicker() + '</div>';
     h += '<div><span>مهره‌ها</span>' + piecePicker() + '</div>';
+    h += '</div><p class="fine mono" dir="ltr" style="opacity:.5;font-size:10px">' + screenInfo() + '</p><div class="kv" style="display:none">';
     h += '</div>';
     h += '<div class="stack">' + (p.chess_username ? '<button type="button" class="btn" data-act="sync"' + (S.syncing ? ' disabled' : '') + '>همگام‌سازی</button>' : '') + '<button type="button" class="btn ghost" data-act="signout">خروج</button></div>';
     return h + '</div></div>';
@@ -1016,8 +1017,18 @@
     try { navigator.clipboard.writeText(t).then(done, function () { }); } catch (e) { }
   }
 
+  function screenInfo() {
+    var p = document.createElement('div');
+    p.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100vh;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);visibility:hidden';
+    document.body.appendChild(p);
+    var cs = getComputedStyle(p), r = [innerHeight, document.documentElement.clientHeight, screen.height, Math.round(parseFloat(cs.height)), parseInt(cs.paddingTop, 10), parseInt(cs.paddingBottom, 10), document.body.getBoundingClientRect().height | 0, document.documentElement.classList.contains('standalone') ? 's' : 'b'];
+    p.remove();
+    return r.join(' · ');
+  }
+
   // ---------- boot ----------
   (function () {
+    if (navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) document.documentElement.classList.add('standalone');
     try { session = JSON.parse(recall('shatranj.session') || 'null'); } catch (e) { session = null; }
     applyBoard(recall('shatranj.board'));
     applyPieces(recall('shatranj.pieces'));
