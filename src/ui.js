@@ -5,7 +5,7 @@
   var app = document.getElementById('app');
   var S = {
     rep: null, profile: null, stage: null, amode: 'in', prog: {}, tatt: 0, club: null, board: null, clubLoaded: false, view: 'report', filter: 'all', weakFilter: null,
-    gid: null, gview: false, page: 0, ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: ''
+    gid: null, gev: {}, gbusy: null, gview: false, page: 0, ply: -1, ti: 0, tsel: null, tfb: null, tdone: false, tcache: {}, user: ''
   };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -247,9 +247,9 @@
     var term = x.res === 'D' ? 'مساوی' : RES[x.res] + (TERM[x.term] ? ' ' + TERM[x.term] : '');
     var h = '<div class="vtop"><button type="button" class="iconbtn back" data-back="1" aria-label="برگشت به فهرست">' + ICON.next + '</button>';
     h += '<div class="vt"><b><span class="pill ' + x.res + '">' + RES[x.res] + '</span><bdi>' + esc(x.opp) + '</bdi></b><small>با ' + (x.me === 'w' ? 'سفید' : 'سیاه') + ' · ' + term + ' · ' + gameWhen(x) + ' · <bdi>' + esc(x.opening) + '</bdi></small></div></div>';
+    h += '<div class="gchartw" id="gchart">' + evalGraph(x, cur) + '</div>';
     h += '<div class="bwrap" id="vboard" tabindex="0" aria-label="صفحه‌ی بازی؛ با کلیدهای جهت حرکت کن">' + boardHTML(s, { flip: x.me === 'b', hl: hl, bad: !!bl }) + '</div>';
     h += '<div class="ctrls"><button type="button" data-nav="first" aria-label="شروع بازی">' + ICON.first + '</button><button type="button" data-nav="prev" aria-label="حرکت قبل">' + ICON.prev + '</button><button type="button" data-nav="next" aria-label="حرکت بعد">' + ICON.next + '</button><button type="button" data-nav="last" aria-label="آخر بازی">' + ICON.last + '</button></div>';
-    h += '<div class="matc">' + matChart(x, cur) + '</div>';
     h += '<div class="mstrip" id="mstrip">';
     plies.forEach(function (p, j) {
       var isB = x.blunders.some(function (b) { return b.ply === j; });
@@ -262,20 +262,45 @@
     return h;
   }
 
-  function matChart(x, cur) {
-    var W = 600, H = 60, n = x.mat.length, mx = 5;
-    x.mat.forEach(function (v) { mx = Math.max(mx, Math.abs(v)); });
+  // Advantage over the game: Stockfish where analysed, material elsewhere. White's share is the light area.
+  function evalGraph(x, cur) {
+    var ev = S.gev[x.id] || [], n = x.g.plies.length + 1, W = 600, H = 64;
+    var sign = x.me === 'w' ? 1 : -1;
+    var vals = [];
+    for (var i = 0; i < n; i++) vals.push(ev[i] != null ? ev[i] : (i === 0 ? 0 : sign * x.mat[i - 1] * 100));
     function px(i) { return n > 1 ? i / (n - 1) * W : 0; }
-    function py(v) { return H / 2 - v / mx * (H / 2 - 4); }
-    var d = 'M0 ' + py(0);
-    x.mat.forEach(function (v, i) { d += 'L' + px(i).toFixed(1) + ' ' + py(v).toFixed(1); });
-    var area = d + 'L' + W + ' ' + py(0) + 'Z';
-    var s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:36px" role="img" aria-label="تعادل مهره‌ها در طول بازی">';
-    s += '<defs><clipPath id="up"><rect x="0" y="0" width="' + W + '" height="' + py(0) + '"/></clipPath><clipPath id="dn"><rect x="0" y="' + py(0) + '" width="' + W + '" height="' + H + '"/></clipPath></defs>';
-    s += '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="8" fill="#1C2A42"/>';
-    s += '<path d="' + area + '" fill="rgba(76,212,168,.3)" clip-path="url(#up)"/><path d="' + area + '" fill="rgba(240,90,110,.3)" clip-path="url(#dn)"/>';
-    if (cur >= 0) s += '<line x1="' + px(cur).toFixed(1) + '" x2="' + px(cur).toFixed(1) + '" y1="0" y2="' + H + '" stroke="#B9A6FF" stroke-width="3"/>';
-    return s + '</svg>';
+    function py(v) { return H * (1 - evalPct(v) / 100); }
+    var d = 'M0 ' + H;
+    vals.forEach(function (v, i) { d += 'L' + px(i).toFixed(1) + ' ' + py(v).toFixed(1); });
+    d += 'L' + W + ' ' + H + 'Z';
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="نمودار برتری در طول بازی">';
+    s += '<rect width="' + W + '" height="' + H + '" fill="#262D40"/><path d="' + d + '" fill="#ECE9F4"/>';
+    s += '<line x1="0" x2="' + W + '" y1="' + H / 2 + '" y2="' + H / 2 + '" stroke="#8F97AA" stroke-width="1" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>';
+    x.blunders.forEach(function (b) { s += '<line x1="' + px(b.ply + 1).toFixed(1) + '" x2="' + px(b.ply + 1).toFixed(1) + '" y1="0" y2="' + H + '" stroke="#F05A6E" stroke-width="2" opacity=".75" vector-effect="non-scaling-stroke"/>'; });
+    s += '<line x1="' + px(cur + 1).toFixed(1) + '" x2="' + px(cur + 1).toFixed(1) + '" y1="0" y2="' + H + '" stroke="#B9A6FF" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>';
+    var v = vals[cur + 1], lab = Math.abs(v) >= 9000 ? (v > 0 ? '+M' : '−M') : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v / 100).toFixed(1);
+    var done = ev.length >= n && ev[n - 1] != null;
+    return s + '<span class="glab mono">' + lab + '</span>' + (done ? '' : '<span class="gbusy">موتور…</span>');
+  }
+  function evalGame(x) {
+    var ev = S.gev[x.id] || (S.gev[x.id] = []), n = x.g.plies.length + 1, i = 0;
+    while (i < n && ev[i] != null) i++;
+    if (i >= n || S.gbusy === x.id) return;
+    S.gbusy = x.id;
+    (function step(i) {
+      if (i >= n || S.gid !== x.id || S.view !== 'games') { S.gbusy = null; paintGraph(); return; }
+      var pos = i === 0 ? x.g.start : x.g.plies[i - 1].after;
+      analyse(pos, function (info) {
+        if (!info) { S.gbusy = null; return; }
+        ev[i] = Math.max(-10000, Math.min(10000, whiteScore(info, pos.turn)));
+        if (i % 4 === 0 || i === n - 1) paintGraph();
+        step(i + 1);
+      }, null, { depth: 11, ms: 350 });
+    })(i);
+  }
+  function paintGraph() {
+    var el = document.getElementById('gchart'), x = S.rep && S.rep.games.filter(function (g) { return g.id === S.gid; })[0];
+    if (el && x) el.innerHTML = evalGraph(x, S.ply);
   }
 
   // ---------- render ----------
@@ -296,6 +321,7 @@
     app.innerHTML = html;
     var gl2 = document.getElementById('glist');
     if (gl2 && keep != null) gl2.scrollTop = keep;
+    if (v === 'games' && S.rep && S.gid != null && document.getElementById('gchart')) { var gx = S.rep.games.filter(function (g) { return g.id === S.gid; })[0]; if (gx) evalGame(gx); }
     var ms = document.getElementById('mstrip'), c = ms && ms.querySelector('.cur');
     if (ms && c) ms.scrollLeft = c.offsetLeft - ms.clientWidth / 2 + c.offsetWidth / 2;
     var pg = document.getElementById('pager');
@@ -340,6 +366,7 @@
     if (t.dataset.act) { act(t.dataset.act, t); return; }
     if (t.dataset.copy) { copyText(t.dataset.copy, t); return; }
     if (t.dataset.board) { setBoard(t.dataset.board); return; }
+    if (t.dataset.pieces) { setPieces(t.dataset.pieces); return; }
     if (t.dataset.sq) { trainClick(+t.dataset.sq); return; }
   });
 
@@ -461,16 +488,14 @@
     }
     return out;
   }
-  function evalBar(info, turn, flip) {
-    var pct = 50;
-    if (info) {
-      var w = whiteScore(info, turn);
-      pct = Math.abs(w) >= 9000 ? (w > 0 ? 100 : 0) : 50 + 50 * (2 / (1 + Math.exp(-0.0045 * w)) - 1);
-      pct = Math.max(3, Math.min(97, pct));
-    }
-    var lab = evalLabel(info, turn), whiteAhead = info ? whiteScore(info, turn) >= 0 : true;
-    return '<div class="evalbar' + (flip ? ' flip' : '') + '" role="img" aria-label="ارزیابی ' + esc(lab) + '"><div class="evfill" style="height:' + pct.toFixed(1) + '%"></div>' +
-      (lab ? '<span class="evlab ' + (whiteAhead ? 'w' : 'b') + '">' + esc(lab) + '</span>' : '') + '</div>';
+  function evalPct(cpWhite) {
+    if (Math.abs(cpWhite) >= 9000) return cpWhite > 0 ? 100 : 0;
+    return 50 + 50 * (2 / (1 + Math.exp(-0.0045 * cpWhite)) - 1);
+  }
+  function evalBar(info, turn) {
+    var pct = info ? Math.max(2, Math.min(98, evalPct(whiteScore(info, turn)))) : 50;
+    var lab = info ? evalLabel(info, turn) : '…';
+    return '<div class="hbar" id="tbar" dir="ltr" role="img" aria-label="ارزیابی ' + esc(lab) + '"><div class="htrack"><div class="hfill" style="width:' + pct.toFixed(1) + '%"></div><i class="hmid"></i></div><b class="mono">' + esc(lab) + '</b></div>';
   }
 
   // ---------- training ----------
@@ -499,7 +524,7 @@
   function paintEval() {
     var tr = S.tr, el = document.getElementById('tbar'), ln = document.getElementById('tline');
     if (!tr) return;
-    if (el) el.outerHTML = evalBar(tr.info, tr.cur.turn, trBase().game.me === 'b').replace('class="evalbar', 'id="tbar" class="evalbar');
+    if (el) el.outerHTML = evalBar(tr.info, tr.cur.turn);
     if (ln) ln.innerHTML = engineLine(tr);
   }
   function engineLine(tr) {
@@ -657,8 +682,8 @@
     var tg = [];
     if (tr.sel != null) tg = Chess.legal(pos).filter(function (m) { return m.from === tr.sel; }).map(function (m) { return m.to; });
     var lastMove = tr.line.length ? tr.line[tr.line.length - 1].m : (tr.fb && tr.fb.m);
-    h += '<div class="bwrap"><div class="bpair">' + evalBar(tr.info, pos.turn, me === 'b').replace('class="evalbar', 'id="tbar" class="evalbar') +
-      boardHTML(pos, { flip: me === 'b', click: true, sel: tr.sel, tgts: tg, hl: lastMove ? [lastMove.from, lastMove.to] : [], bad: tr.fb && tr.fb.kind === 'no' }) + '</div></div>';
+    h += evalBar(tr.info, pos.turn) + '<div class="bwrap">' +
+      boardHTML(pos, { flip: me === 'b', click: true, sel: tr.sel, tgts: tg, hl: lastMove ? [lastMove.from, lastMove.to] : [], bad: tr.fb && tr.fb.kind === 'no' }) + '</div>';
     if (tr.phase === 'explore') h += '<div class="tline" id="tline">' + engineLine(tr) + '</div>';
     var fb = tr.fb;
     if (fb) {
@@ -759,6 +784,7 @@
       S.profile = rows && rows[0];
       if (!S.profile) throw new Error('پروفایل پیدا نشد. یک بار خارج شو و دوباره وارد شو.');
       if (S.profile.settings && S.profile.settings.board) { applyBoard(S.profile.settings.board); store('shatranj.board', S.board); }
+      if (S.profile.settings && S.profile.settings.pieces) { applyPieces(S.profile.settings.pieces); store('shatranj.pieces', S.pieces); }
       if (!S.profile.chess_username) { S.stage = 'ready'; render(); return; }
       S.stage = 'ready'; S.user = S.profile.chess_username; render();
       loadProgress();
@@ -872,6 +898,7 @@
     h += '<div><span>Chess.com</span>' + (p.chess_username ? '<span class="mono">' + esc(p.chess_username) + '</span>' : '<button type="button" class="linkbtn inline" style="font-size:14px" data-act="show-link">وصل کردن</button>') + '</div>';
     h += '<div><span>همگام‌سازی</span><span>' + esc(st) + '</span></div>';
     h += '<div><span>رنگ صفحه</span>' + boardPicker() + '</div>';
+    h += '<div><span>مهره‌ها</span>' + piecePicker() + '</div>';
     h += '</div>';
     h += '<div class="stack">' + (p.chess_username ? '<button type="button" class="btn" data-act="sync"' + (S.syncing ? ' disabled' : '') + '>همگام‌سازی</button>' : '') + '<button type="button" class="btn ghost" data-act="signout">خروج</button></div>';
     return h + '</div></div>';
@@ -916,13 +943,31 @@
     });
     return h + '</div>';
   }
+  var PIECESETS = [['cburnett', 'کلاسیک'], ['merida', 'سنتی'], ['chessnut', 'مدرن'], ['fantasy', 'فانتزی']];
+  function applyPieces(name) {
+    var p = PIECESETS.filter(function (x) { return x[0] === name; })[0] || PIECESETS[0];
+    S.pieces = p[0]; document.body.dataset.pieces = p[0];
+  }
+  function piecePicker() {
+    var h = '<div class="swatches" role="group" aria-label="مهره‌ها">';
+    PIECESETS.forEach(function (p) {
+      h += '<button type="button" class="pswatch" data-pieces="' + p[0] + '" aria-pressed="' + (S.pieces === p[0]) + '" aria-label="' + p[1] + '"><img src="pieces/' + p[0] + '/wN.svg" alt=""></button>';
+    });
+    return h + '</div>';
+  }
+  function setPieces(name) {
+    applyPieces(name); store('shatranj.pieces', name); render();
+    saveSettings({ pieces: name });
+  }
+  function saveSettings(patch) {
+    if (!S.profile || !session) return;
+    var st = Object.assign({}, S.profile.settings || {}, patch);
+    S.profile.settings = st;
+    db('PATCH', 'profiles?id=eq.' + session.user.id, { settings: st }, 'return=minimal').catch(function () { });
+  }
   function setBoard(name) {
     applyBoard(name); store('shatranj.board', name); render();
-    if (S.profile && session) {
-      var st = Object.assign({}, S.profile.settings || {}, { board: name });
-      S.profile.settings = st;
-      db('PATCH', 'profiles?id=eq.' + session.user.id, { settings: st }, 'return=minimal').catch(function () { });
-    }
+    saveSettings({ board: name });
   }
 
   // ---------- account events ----------
@@ -971,10 +1016,28 @@
     try { navigator.clipboard.writeText(t).then(done, function () { }); } catch (e) { }
   }
 
+  // iPhone home-screen app: the page can be drawn under the status bar while the
+  // viewport is reported shorter than the screen, leaving a strip at the bottom.
+  function fitStandalone() {
+    var st = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+    var root = document.documentElement;
+    if (!st || innerWidth > innerHeight) { root.style.removeProperty('--app-h'); return; }
+    var p = document.createElement('div');
+    p.style.cssText = 'position:fixed;top:0;left:0;width:1px;padding-top:env(safe-area-inset-top);visibility:hidden';
+    document.body.appendChild(p);
+    var top = p.getBoundingClientRect().height;
+    p.remove();
+    if (top > 0 && innerHeight < screen.height) root.style.setProperty('--app-h', screen.height + 'px');
+    else root.style.removeProperty('--app-h');
+  }
+
   // ---------- boot ----------
   (function () {
     try { session = JSON.parse(recall('shatranj.session') || 'null'); } catch (e) { session = null; }
     applyBoard(recall('shatranj.board'));
+    applyPieces(recall('shatranj.pieces'));
+    fitStandalone();
+    window.addEventListener('resize', fitStandalone);
     forget('shatranj.pgn'); forget('shatranj.src');
     // Coming back from an email confirmation link: Supabase puts the session in the hash.
     var hp = /access_token=([^&]+)/.exec(location.hash || '');

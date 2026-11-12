@@ -34,3 +34,7 @@ node src/build.js
 ## موتور شطرنج
 
 تحلیل تمرین‌ها با [Stockfish](https://stockfishchess.org) انجام می‌شود (نسخه‌ی تک‌رشته‌ای 17.1 lite از بسته‌ی npm به نام `stockfish`)، که در `vendor/stockfish/` کنار سایت قرار دارد و داخل مرورگر کاربر اجرا می‌شود. Stockfish تحت مجوز GPLv3 است؛ متن مجوز در `vendor/stockfish/Copying.txt` آمده.
+
+## مهره‌ها
+
+چهار دست مهره (cburnett، merida، chessnut، fantasy) از مخزن Lichess در پوشه‌ی `pieces/` قرار دارند. سازنده و مجوز هر کدام در `pieces/README.md` آمده.
