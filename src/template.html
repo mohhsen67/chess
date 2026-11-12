@@ -279,10 +279,11 @@ button.uchip{cursor:pointer;font:inherit;font-size:13px}
 @media (prefers-reduced-motion:reduce){.hfill{transition:none}}
 
 /* eval graph + horizontal bar */
-.gchartw{position:relative;flex:none;height:56px}
-.gchartw svg{display:block;width:100%;height:100%}
-.glab{position:absolute;top:4px;left:6px;font-size:11px;font-weight:700;color:#262D40;background:rgba(236,233,244,.85);padding:0 5px;line-height:18px}
-.gbusy{position:absolute;bottom:3px;right:6px;font-size:10px;color:#C4CCDC}
+.gchartw{flex:none;height:56px;display:flex;align-items:center;gap:8px;direction:ltr}
+.gchartw svg{display:block;flex:1;min-width:0;height:100%}
+.gside{flex:none;min-width:38px;display:flex;flex-direction:column;align-items:flex-end;line-height:1.3}
+.glab{font-size:12px;font-weight:700}
+.gbusy{font-size:10px;color:var(--muted)}
 .hbar{flex:none;display:flex;align-items:center;gap:8px}
 .htrack{position:relative;flex:1;height:10px;background:#262D40;overflow:hidden}
 .hfill{position:absolute;top:0;bottom:0;left:0;background:#ECE9F4;transition:width .35s ease}

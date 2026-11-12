@@ -280,7 +280,7 @@
     s += '<line x1="' + px(cur + 1).toFixed(1) + '" x2="' + px(cur + 1).toFixed(1) + '" y1="0" y2="' + H + '" stroke="#B9A6FF" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>';
     var v = vals[cur + 1], lab = Math.abs(v) >= 9000 ? (v > 0 ? '+M' : '−M') : (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v / 100).toFixed(1);
     var done = ev.length >= n && ev[n - 1] != null;
-    return s + '<span class="glab mono">' + lab + '</span>' + (done ? '' : '<span class="gbusy">موتور…</span>');
+    return s + '<span class="gside"><b class="glab mono">' + lab + '</b>' + (done ? '' : '<span class="gbusy">موتور…</span>') + '</span>';
   }
   function evalGame(x) {
     var ev = S.gev[x.id] || (S.gev[x.id] = []), n = x.g.plies.length + 1, i = 0;
